@@ -233,6 +233,11 @@ def main():
         description="Scan and remove node_modules/venvs to reclaim disk space."
     )
     parser.add_argument(
+        "--version",
+        action="version",
+        version="devclean v1.1.0"
+    )
+    parser.add_argument(
         "path",
         nargs="?",
         default=".",
