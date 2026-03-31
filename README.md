@@ -17,17 +17,20 @@ python3 devclean.py --dry-run
 ## Usage
 
 ```bash
-python3 devclean.py [path] [--dry-run]
+python3 devclean.py [path] [--dry-run] [--interactive]
 ```
 
 - `path` is optional. Defaults to the current directory.
 - `--dry-run` lists what would be removed without deleting anything.
+- `-i, --interactive` opens a curses-based TUI to select specific items.
 
 Example:
 
 ```bash
 python3 devclean.py ~/code --dry-run
 python3 devclean.py ~/code
+python3 devclean.py ~/code --interactive
+python3 devclean.py ~/code --interactive --dry-run
 ```
 
 ## What It Cleans
@@ -44,6 +47,17 @@ python3 devclean.py ~/code
 - Shows a size summary before deleting.
 - Prompts for confirmation before removal.
 - Handles permission errors gracefully.
+
+## Interactive TUI
+
+Use `-i`/`--interactive` to pick exactly what to delete:
+
+- Arrow keys to move
+- SPACE to toggle selection
+- `A` select all / `D` deselect all
+- ENTER to confirm and delete selected items
+- `Q` or ESC to quit without deleting
+- Live total for selected size at the bottom
 
 ## Notes
 
