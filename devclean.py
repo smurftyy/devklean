@@ -8,6 +8,7 @@ import os
 import sys
 import shutil
 import argparse
+import curses
 
 # ANSI colors
 CYAN   = "\033[36m"
@@ -50,7 +51,7 @@ def get_dir_size(path):
         pass
     return total
 
-def scan(root, dry_run):
+def scan(root):
     found = []
 
     print(f"\n{BOLD}{CYAN}devclean{RESET} {DIM}scanning {root}...{RESET}\n")
@@ -69,10 +70,9 @@ def scan(root, dry_run):
                 found.append((full_path, dirname, size))
                 dirnames.remove(dirname)  # don't recurse into it
 
-    if not found:
-        print(f"{GREEN}✓ Nothing to clean.{RESET}\n")
-        return
+    return found
 
+def print_summary(found):
     total_size = sum(s for _, _, s in found)
 
     print(f"{'TYPE':<18} {'SIZE':>8}  {'PATH'}")
@@ -86,20 +86,14 @@ def scan(root, dry_run):
     print(f"{DIM}{'─'*70}{RESET}")
     print(f"{'TOTAL':<18} {BOLD}{RED}{format_size(total_size):>8}{RESET}\n")
 
-    if dry_run:
-        print(f"{YELLOW}[dry-run] nothing deleted.{RESET}\n")
-        return
+    return total_size
 
-    confirm = input(f"{BOLD}Delete all {len(found)} director{'y' if len(found)==1 else 'ies'}? {DIM}(y/N){RESET} ").strip().lower()
-    if confirm != "y":
-        print(f"\n{DIM}Aborted. Nothing deleted.{RESET}\n")
-        return
-
+def delete_items(items, total_size):
     deleted = 0
-    failed  = 0
+    failed = 0
 
     print()
-    for path, name, size in found:
+    for path, _, _ in items:
         try:
             shutil.rmtree(path)
             print(f"  {GREEN}✓{RESET} {DIM}{path}{RESET}")
@@ -113,9 +107,135 @@ def scan(root, dry_run):
         print(f"{RED}{failed} failed.{RESET}")
     print()
 
+def run_standard(found, dry_run):
+    total_size = print_summary(found)
+
+    if dry_run:
+        print(f"{YELLOW}[dry-run] nothing deleted.{RESET}\n")
+        return
+
+    confirm = input(f"{BOLD}Delete all {len(found)} director{'y' if len(found)==1 else 'ies'}? {DIM}(y/N){RESET} ").strip().lower()
+    if confirm != "y":
+        print(f"\n{DIM}Aborted. Nothing deleted.{RESET}\n")
+        return
+
+    delete_items(found, total_size)
+
+def truncate(text, max_len):
+    if max_len <= 0:
+        return ""
+    if len(text) <= max_len:
+        return text
+    if max_len <= 3:
+        return text[:max_len]
+    return text[:max_len - 3] + "..."
+
+def interactive_ui(stdscr, items, dry_run):
+    curses.curs_set(0)
+    stdscr.keypad(True)
+
+    selected = [False] * len(items)
+    idx = 0
+    top = 0
+
+    while True:
+        stdscr.erase()
+        height, width = stdscr.getmaxyx()
+
+        header = "devclean interactive - SPACE select | A all | D none | ENTER confirm | Q/ESC quit"
+        stdscr.addnstr(0, 0, truncate(header, width), width)
+
+        list_top = 1
+        list_height = max(0, height - 3)
+        footer_y = height - 1
+
+        if len(items) == 0:
+            stdscr.addnstr(list_top, 0, "No matching directories found.", width)
+        else:
+            if idx < top:
+                top = idx
+            if idx >= top + list_height:
+                top = idx - list_height + 1
+
+            for row in range(list_height):
+                i = top + row
+                if i >= len(items):
+                    break
+                item = items[i]
+                mark = "x" if selected[i] else " "
+                line = f"[{mark}] {item['label']:<18} {format_size(item['size']):>8} {item['path']}"
+                line = truncate(line, width)
+                if i == idx:
+                    stdscr.addnstr(list_top + row, 0, line, width, curses.A_REVERSE)
+                else:
+                    stdscr.addnstr(list_top + row, 0, line, width)
+
+        selected_count = sum(1 for s in selected if s)
+        selected_size = sum(items[i]["size"] for i, s in enumerate(selected) if s)
+        footer = f"Selected: {selected_count}/{len(items)}  Total: {format_size(selected_size)}"
+        if dry_run:
+            footer += "  [dry-run]"
+        stdscr.addnstr(footer_y, 0, truncate(footer, width), width)
+
+        stdscr.refresh()
+
+        key = stdscr.getch()
+        if key in (ord("q"), ord("Q"), 27):
+            return None
+        if key in (curses.KEY_UP,):
+            if idx > 0:
+                idx -= 1
+        elif key in (curses.KEY_DOWN,):
+            if idx < len(items) - 1:
+                idx += 1
+        elif key == ord(" "):
+            if len(items) > 0:
+                selected[idx] = not selected[idx]
+        elif key in (ord("a"), ord("A")):
+            selected = [True] * len(items)
+        elif key in (ord("d"), ord("D")):
+            selected = [False] * len(items)
+        elif key in (curses.KEY_ENTER, 10, 13):
+            return [i for i, s in enumerate(selected) if s]
+
+def run_interactive(found, dry_run):
+    items = [
+        {
+            "path": path,
+            "name": name,
+            "size": size,
+            "label": TARGETS.get(name, name),
+        }
+        for path, name, size in sorted(found, key=lambda x: -x[2])
+    ]
+
+    selected_indices = curses.wrapper(interactive_ui, items, dry_run)
+    if selected_indices is None:
+        print(f"\n{DIM}Aborted. Nothing deleted.{RESET}\n")
+        return
+
+    selected = [items[i] for i in selected_indices]
+    if not selected:
+        print(f"\n{DIM}No items selected. Nothing deleted.{RESET}\n")
+        return
+
+    total_size = sum(item["size"] for item in selected)
+    selected_paths = [(item["path"], item["name"], item["size"]) for item in selected]
+
+    if dry_run:
+        print(f"{YELLOW}[dry-run] {len(selected)} director{'y' if len(selected)==1 else 'ies'} selected, nothing deleted.{RESET}\n")
+        return
+
+    delete_items(selected_paths, total_size)
+
 def main():
     parser = argparse.ArgumentParser(
         description="Scan and remove node_modules/venvs to reclaim disk space."
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="devclean v1.1.0"
     )
     parser.add_argument(
         "path",
@@ -128,6 +248,12 @@ def main():
         action="store_true",
         help="Show what would be deleted without deleting anything"
     )
+    parser.add_argument(
+        "-i",
+        "--interactive",
+        action="store_true",
+        help="Interactively select items to delete"
+    )
     args = parser.parse_args()
 
     root = os.path.abspath(args.path)
@@ -135,7 +261,15 @@ def main():
         print(f"{RED}Error: '{root}' is not a directory.{RESET}")
         sys.exit(1)
 
-    scan(root, args.dry_run)
+    found = scan(root)
+    if not found:
+        print(f"{GREEN}✓ Nothing to clean.{RESET}\n")
+        return
+
+    if args.interactive:
+        run_interactive(found, args.dry_run)
+    else:
+        run_standard(found, args.dry_run)
 
 if __name__ == "__main__":
     main()
