@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import os
-
+from devclean.cli.commands.common import scan_directory
 from devclean.deleter import delete_items
 from devclean.models import CleanableItem
 from devclean.output.base import Renderer
-from devclean.scanner import scan
 from devclean.tui import run_interactive
 
 
@@ -26,17 +24,10 @@ def run_standard(renderer: Renderer, found: list[CleanableItem], dry_run: bool) 
 
 
 def run_clean(args, renderer: Renderer) -> int:
-    """Scan and optionally delete cleanable directories (current default behaviour)."""
-    root = os.path.abspath(args.path)
-    if not os.path.isdir(root):
-        renderer.invalid_directory(root)
-        return 1
-
-    renderer.scan_start(root)
-    found = scan(root)
-    if not found:
-        renderer.nothing_to_clean()
-        return 0
+    """Scan and optionally delete cleanable directories."""
+    exit_code, found = scan_directory(args, renderer)
+    if exit_code != 0 or found is None:
+        return exit_code
 
     if args.interactive:
         run_interactive(renderer, found, args.dry_run)
