@@ -11,7 +11,7 @@ from devklean.cli.commands.scan import run_scan
 from devklean.config.defaults import DEFAULT_TARGETS
 from devklean.config.models import AppConfig, DefaultsConfig
 from devklean.deletion.metadata import MetadataManager
-from devklean.deletion.trash import TrashStrategy
+from devklean.deletion.safety import SafetyValidator
 from devklean.output.console import Console
 from devklean.output.text import TextRenderer
 
@@ -43,7 +43,7 @@ def test_clean_end_to_end_deletes(tmp_path, monkeypatch, fake_trash) -> None:
     tree = _tree(tmp_path)
     nm = tree / "app" / "node_modules"
 
-    code = run_clean(_args(tree), _renderer(), _config(default_yes=True), TrashStrategy())
+    code = run_clean(_args(tree), _renderer(), _config(default_yes=True), SafetyValidator())
 
     assert code == 0
     assert not nm.exists()  # sent to trash
@@ -61,7 +61,7 @@ def test_clean_dry_run_deletes_nothing(tmp_path, monkeypatch, fake_trash) -> Non
     nm = tree / "app" / "node_modules"
 
     code = run_clean(
-        _args(tree, dry_run=True), _renderer(), _config(default_yes=True), TrashStrategy()
+        _args(tree, dry_run=True), _renderer(), _config(default_yes=True), SafetyValidator()
     )
 
     assert code == 0

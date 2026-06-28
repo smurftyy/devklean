@@ -1,4 +1,4 @@
-"""Tests for the deletion backend abstraction."""
+"""Tests for the deletion backend (delete_items)."""
 
 from __future__ import annotations
 
@@ -7,20 +7,20 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from devklean.cli.commands.clean import run_standard
+from devklean.deletion import delete_items
 from devklean.deletion.metadata import MetadataManager
-from devklean.deletion.service import delete_items
-from devklean.deletion.trash import TrashStrategy
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
-def test_trash_strategy_delegates_to_send2trash(tmp_path: Path, fake_trash) -> None:
+def test_delete_items_delegates_to_send2trash(tmp_path: Path, fake_trash) -> None:
     source = tmp_path / "workspace" / "node_modules"
     source.mkdir(parents=True)
     (source / "package.json").write_text("{}")
 
     item = CleanableItem(str(source), "node_modules", 1024, "Node.js")
 
-    result = TrashStrategy().delete([item], total_size=1024)
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+    result = delete_items([item], 1024, metadata_manager=manager)
 
     assert fake_trash == [str(source)]  # send2trash called with the item path
     assert not source.exists()
@@ -29,20 +29,20 @@ def test_trash_strategy_delegates_to_send2trash(tmp_path: Path, fake_trash) -> N
     assert result.total_size == 1024
 
 
-def test_trash_strategy_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
+def test_delete_items_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
     source = tmp_path / "workspace" / "node_modules"
     source.mkdir(parents=True)
 
     item = CleanableItem(str(source), "node_modules", 1024, "Node.js")
 
-    result = TrashStrategy().delete([item], total_size=1024, dry_run=True)
+    result = delete_items([item], 1024, dry_run=True)
 
     assert fake_trash == []  # structural guard: no trashing under dry-run
     assert source.exists()
     assert result.deleted == (str(source),)
 
 
-def test_trash_strategy_translates_failure_into_delete_failure(tmp_path: Path, monkeypatch) -> None:
+def test_delete_items_translates_failure_into_delete_failure(tmp_path: Path, monkeypatch) -> None:
     source = tmp_path / "workspace" / "node_modules"
     source.mkdir(parents=True)
 
@@ -52,7 +52,7 @@ def test_trash_strategy_translates_failure_into_delete_failure(tmp_path: Path, m
     monkeypatch.setattr("devklean.deletion.trash.send2trash", _boom)
 
     item = CleanableItem(str(source), "node_modules", 10, "Node.js")
-    result = TrashStrategy().delete([item], total_size=10)
+    result = delete_items([item], 10)
 
     assert result.deleted == ()
     assert len(result.failed) == 1
@@ -101,23 +101,24 @@ class _RecordingRenderer:
         self.result = result
 
 
-class _RecordingStrategy:
-    def __init__(self) -> None:
-        self.called = False
-        self.name = "recording"
+def _fake_delete_recorder(calls: list[bool]):
+    """A stand-in for delete_items that records that it was invoked."""
 
-    def delete(self, items, total_size: int, dry_run: bool = False) -> DeleteResult:
-        self.called = True
+    def _fake(items, total_size, **kwargs) -> DeleteResult:
+        calls.append(True)
         return DeleteResult(
             deleted=tuple(item.path for item in items),
             failed=(),
             total_size=total_size,
         )
 
+    return _fake
+
 
 def test_run_standard_honors_dry_run_and_skips_backend(monkeypatch) -> None:
     renderer = _RecordingRenderer()
-    strategy = _RecordingStrategy()
+    calls: list[bool] = []
+    monkeypatch.setattr("devklean.cli.commands.clean.delete_items", _fake_delete_recorder(calls))
     items = [CleanableItem("/tmp/node_modules", "node_modules", 100, "Node.js")]
 
     def fail_input(*args, **kwargs):
@@ -125,32 +126,33 @@ def test_run_standard_honors_dry_run_and_skips_backend(monkeypatch) -> None:
 
     monkeypatch.setattr("builtins.input", fail_input)
 
-    run_standard(renderer, items, True, strategy)
+    run_standard(renderer, items, True)
 
     assert renderer.summary_calls == 1
     assert renderer.dry_run_calls == 1
-    assert strategy.called is False
+    assert calls == []  # delete_items never invoked under dry-run
     assert renderer.result is None
     assert renderer.prompt_count is None
 
 
-def test_run_standard_uses_injected_backend(monkeypatch) -> None:
+def test_run_standard_invokes_delete_items(monkeypatch) -> None:
     renderer = _RecordingRenderer()
-    strategy = _RecordingStrategy()
+    calls: list[bool] = []
+    monkeypatch.setattr("devklean.cli.commands.clean.delete_items", _fake_delete_recorder(calls))
     items = [CleanableItem("/tmp/node_modules", "node_modules", 100, "Node.js")]
 
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
-    run_standard(renderer, items, False, strategy)
+    run_standard(renderer, items, False)
 
     assert renderer.summary_calls == 1
     assert renderer.prompt_count == 1
-    assert strategy.called is True
+    assert calls == [True]  # delete_items invoked once
     assert renderer.result is not None
     assert renderer.result.deleted == ("/tmp/node_modules",)
 
 
-def test_delete_items_records_only_successes(tmp_path: Path) -> None:
+def test_delete_items_records_only_successes(tmp_path: Path, monkeypatch) -> None:
     storage_dir = tmp_path / "metadata"
     manager = MetadataManager(storage_dir=storage_dir)
     items = [
@@ -158,17 +160,14 @@ def test_delete_items_records_only_successes(tmp_path: Path) -> None:
         CleanableItem("/tmp/b", "b", 20, "B"),
     ]
 
-    class _PartialStrategy:
-        name = "trash"
+    # /tmp/b fails to trash; only the successful /tmp/a should be recorded.
+    def _selective(path) -> None:
+        if path == "/tmp/b":
+            raise PermissionError("denied")
 
-        def delete(self, items, total_size: int, dry_run: bool = False) -> DeleteResult:
-            return DeleteResult(
-                deleted=("/tmp/a",),
-                failed=(),
-                total_size=total_size,
-            )
+    monkeypatch.setattr("devklean.deletion.trash.send2trash", _selective)
 
-    result = delete_items(items, 30, _PartialStrategy(), manager)
+    result = delete_items(items, 30, metadata_manager=manager)
 
     records = sorted(storage_dir.glob("*.json"))
     assert len(records) == 1

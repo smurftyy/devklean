@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from devklean.scanner.scanner import ScanResult, scan, scan_tree
+from devklean.scanner.scanner import ScanResult, scan_tree
 
 _is_root = hasattr(os, "geteuid") and os.geteuid() == 0
 
@@ -18,11 +18,6 @@ def test_scan_tree_returns_scan_result(sample_tree: Path) -> None:
     assert isinstance(report, ScanResult)
     assert isinstance(report.items, list)
     assert report.permission_errors == []
-
-
-def test_scan_wrapper_still_returns_list(sample_tree: Path) -> None:
-    found = scan(str(sample_tree))
-    assert isinstance(found, list)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX permission model")

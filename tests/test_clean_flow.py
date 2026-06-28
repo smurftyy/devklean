@@ -35,15 +35,16 @@ class _Renderer:
         self.result = result
 
 
-class _Strategy:
-    name = "rec"
+def _install_delete_recorder(monkeypatch) -> list[bool]:
+    """Replace clean.delete_items with a recorder; returns the call log."""
+    calls: list[bool] = []
 
-    def __init__(self) -> None:
-        self.called = False
-
-    def delete(self, items, total_size: int, dry_run: bool = False) -> DeleteResult:
-        self.called = True
+    def _fake(items, total_size, **kwargs) -> DeleteResult:
+        calls.append(True)
         return DeleteResult(deleted=tuple(i.path for i in items), failed=(), total_size=total_size)
+
+    monkeypatch.setattr("devklean.cli.commands.clean.delete_items", _fake)
+    return calls
 
 
 def _items(size: int):
@@ -51,18 +52,20 @@ def _items(size: int):
 
 
 def test_dry_run_skips_deletion(monkeypatch) -> None:
-    renderer, strategy = _Renderer(), _Strategy()
+    renderer = _Renderer()
+    calls = _install_delete_recorder(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda p: (_ for _ in ()).throw(AssertionError()))
 
-    run_standard(renderer, _items(100), dry_run=True, deletion_strategy=strategy)
+    run_standard(renderer, _items(100), dry_run=True)
 
     assert renderer.dry_run_selected_calls == 1
-    assert strategy.called is False
+    assert calls == []
     assert renderer.result is None
 
 
 def test_default_yes_below_threshold_skips_prompt(monkeypatch) -> None:
-    renderer, strategy = _Renderer(), _Strategy()
+    renderer = _Renderer()
+    calls = _install_delete_recorder(monkeypatch)
 
     def fail_input(p):
         raise AssertionError("should not prompt with default_yes below threshold")
@@ -73,34 +76,34 @@ def test_default_yes_below_threshold_skips_prompt(monkeypatch) -> None:
         renderer,
         _items(100),
         dry_run=False,
-        deletion_strategy=strategy,
         default_yes=True,
         confirm_threshold=1024**3,
     )
 
-    assert strategy.called is True
+    assert calls == [True]
     assert renderer.result is not None
 
 
 def test_below_threshold_without_default_yes_prompts(monkeypatch) -> None:
-    renderer, strategy = _Renderer(), _Strategy()
+    renderer = _Renderer()
+    calls = _install_delete_recorder(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda p: "y")
 
     run_standard(
         renderer,
         _items(100),
         dry_run=False,
-        deletion_strategy=strategy,
         default_yes=False,
         confirm_threshold=1024**3,
     )
 
     assert renderer.prompts == [(1, 100)]
-    assert strategy.called is True
+    assert calls == [True]
 
 
 def test_large_deletion_requires_typed_delete_even_with_default_yes(monkeypatch) -> None:
-    renderer, strategy = _Renderer(), _Strategy()
+    renderer = _Renderer()
+    calls = _install_delete_recorder(monkeypatch)
     answers = iter(["DELETE"])
     monkeypatch.setattr("builtins.input", lambda p: next(answers))
 
@@ -108,28 +111,27 @@ def test_large_deletion_requires_typed_delete_even_with_default_yes(monkeypatch)
         renderer,
         _items(2 * 1024**3),
         dry_run=False,
-        deletion_strategy=strategy,
         default_yes=True,
         confirm_threshold=1024**3,
     )
 
     # the plain y/N prompt was NOT used; the typed gate ran instead
     assert renderer.prompts == []
-    assert strategy.called is True
+    assert calls == [True]
 
 
 def test_large_deletion_aborts_when_not_confirmed(monkeypatch) -> None:
-    renderer, strategy = _Renderer(), _Strategy()
+    renderer = _Renderer()
+    calls = _install_delete_recorder(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda p: "nope")
 
     run_standard(
         renderer,
         _items(2 * 1024**3),
         dry_run=False,
-        deletion_strategy=strategy,
         default_yes=True,
         confirm_threshold=1024**3,
     )
 
-    assert strategy.called is False
+    assert calls == []
     assert renderer.aborted_calls == 1

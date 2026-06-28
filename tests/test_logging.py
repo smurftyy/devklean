@@ -60,9 +60,8 @@ def test_delete_items_logs_deletion(tmp_path, monkeypatch, fake_trash) -> None:
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     configure_logging()
 
+    from devklean.deletion import delete_items
     from devklean.deletion.metadata import MetadataManager
-    from devklean.deletion.service import delete_items
-    from devklean.deletion.trash import TrashStrategy
     from devklean.models import CleanableItem
 
     target = tmp_path / "proj" / "node_modules"
@@ -72,7 +71,6 @@ def test_delete_items_logs_deletion(tmp_path, monkeypatch, fake_trash) -> None:
     delete_items(
         [item],
         100,
-        strategy=TrashStrategy(),
         metadata_manager=MetadataManager(storage_dir=tmp_path / "meta"),
     )
 
