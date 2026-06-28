@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 
-from devclean.formatting import BOLD, CYAN, DIM, RESET
 from devclean.models import CleanableItem
 
 TARGETS = {
@@ -34,8 +33,6 @@ def get_dir_size(path: str) -> int:
 
 def scan(root: str) -> list[CleanableItem]:
     found: list[CleanableItem] = []
-
-    print(f"\n{BOLD}{CYAN}devclean{RESET} {DIM}scanning {root}...{RESET}\n")
 
     for dirpath, dirnames, _ in os.walk(root, topdown=True):
         # Prune already-found targets from further traversal

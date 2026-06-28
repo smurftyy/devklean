@@ -5,10 +5,14 @@ import os
 import sys
 
 from devclean.deleter import delete_items
-from devclean.formatting import BOLD, DIM, GREEN, RED, RESET, YELLOW, format_size
+from devclean.formatting import BOLD, CYAN, DIM, GREEN, RED, RESET, YELLOW, format_size
 from devclean.models import CleanableItem
 from devclean.scanner import scan
 from devclean.tui import run_interactive
+
+
+def print_scan_start(root: str) -> None:
+    print(f"\n{BOLD}{CYAN}devclean{RESET} {DIM}scanning {root}...{RESET}\n")
 
 
 def print_summary(found: list[CleanableItem]) -> int:
@@ -75,6 +79,7 @@ def main() -> None:
         print(f"{RED}Error: '{root}' is not a directory.{RESET}")
         sys.exit(1)
 
+    print_scan_start(root)
     found = scan(root)
     if not found:
         print(f"{GREEN}✓ Nothing to clean.{RESET}\n")
