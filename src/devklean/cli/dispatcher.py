@@ -5,6 +5,7 @@ from typing import Callable
 
 from devklean.cli.commands.clean import run_clean
 from devklean.cli.commands.scan import run_scan
+from devklean.deletion import default_deletion_strategy
 from devklean.cli.parser import IMPLEMENTED_COMMANDS, RESERVED_COMMANDS
 from devklean.config.models import AppConfig
 from devklean.output.base import Renderer
@@ -32,4 +33,6 @@ def dispatch(args, renderer: Renderer, config: AppConfig) -> int:
         return 2
 
     handler = _COMMANDS[command]
+    if command == "clean":
+        return handler(args, renderer, config, default_deletion_strategy())
     return handler(args, renderer, config)

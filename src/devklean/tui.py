@@ -3,7 +3,7 @@ from __future__ import annotations
 import curses
 from typing import List, Optional
 
-from devklean.deleter import delete_items
+from devklean.deletion import DeletionStrategy, delete_items
 from devklean.formatting import format_size, truncate
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
@@ -79,7 +79,12 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
             return [i for i, s in enumerate(selected) if s]
 
 
-def run_interactive(renderer: Renderer, found: List[CleanableItem], dry_run: bool) -> None:
+def run_interactive(
+    renderer: Renderer,
+    found: List[CleanableItem],
+    dry_run: bool,
+    deletion_strategy: DeletionStrategy | None = None,
+) -> None:
     items = items_by_size_desc(found)
 
     selected_indices = curses.wrapper(interactive_ui, items, dry_run)
@@ -98,5 +103,5 @@ def run_interactive(renderer: Renderer, found: List[CleanableItem], dry_run: boo
         renderer.dry_run_selected(len(selected))
         return
 
-    result = delete_items(selected, total_size)
+    result = delete_items(selected, total_size, deletion_strategy)
     renderer.deletion_result(result)
