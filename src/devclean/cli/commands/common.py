@@ -20,11 +20,7 @@ def scan_directory(
         return 1, None
 
     renderer.scan_start(root)
-    found = scan(
-        root,
-        targets=config.targets,
-        ignored_paths=config.ignored_paths,
-    )
+    found = scan(root, settings=config.scan_settings)
     if not found:
         renderer.nothing_to_clean()
         return 0, None

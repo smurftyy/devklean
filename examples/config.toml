@@ -12,16 +12,19 @@ interactive = false
 path = "."
 
 [targets]
-# Built-in targets to exclude from scanning.
+# Built-in target directory names to exclude from scanning.
 exclude = ["env"]
 
-# Additional directory names to treat as cleanable targets.
+# User-defined cleanable directory names and display labels.
 [targets.custom]
 ".turbo" = "Turborepo cache"
 "build" = "Build output"
 
 [ignore]
-# Absolute or ~-relative paths that devclean must never remove.
+# Specific paths to exclude from scan results (absolute or ~-relative).
 paths = [
     "~/important-project/node_modules",
 ]
+
+# Directory names to ignore anywhere in the scan tree.
+directories = [".git", ".hg"]

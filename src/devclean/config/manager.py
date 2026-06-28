@@ -7,6 +7,7 @@ from typing import Any, Optional
 from devclean.config.defaults import DEFAULT_TARGETS
 from devclean.config.models import AppConfig, DefaultsConfig
 from devclean.config.paths import get_config_path
+from devclean.config.targets import merge_targets
 
 try:
     import tomllib
@@ -50,6 +51,7 @@ class ConfigManager:
         return AppConfig(
             targets=dict(DEFAULT_TARGETS),
             ignored_paths=(),
+            ignored_directories=(),
             defaults=DefaultsConfig(),
         )
 
@@ -58,19 +60,21 @@ class ConfigManager:
         targets_section = data.get("targets", {})
         ignore_section = data.get("ignore", {})
 
-        merged_targets = dict(DEFAULT_TARGETS)
-
-        for name in _as_str_list(targets_section.get("exclude", [])):
-            merged_targets.pop(name, None)
-
         custom_targets = targets_section.get("custom", {})
-        if isinstance(custom_targets, dict):
-            for name, label in custom_targets.items():
-                merged_targets[str(name)] = str(label)
+        if not isinstance(custom_targets, dict):
+            custom_targets = {}
+
+        merged_targets = merge_targets(
+            exclude=_as_str_list(targets_section.get("exclude", [])),
+            custom=custom_targets,
+        )
 
         ignored_paths = tuple(
             _normalize_path(path)
             for path in _as_str_list(ignore_section.get("paths", []))
+        )
+        ignored_directories = tuple(
+            _as_str_list(ignore_section.get("directories", []))
         )
 
         defaults = DefaultsConfig(
@@ -82,6 +86,7 @@ class ConfigManager:
         return AppConfig(
             targets=merged_targets,
             ignored_paths=ignored_paths,
+            ignored_directories=ignored_directories,
             defaults=defaults,
         )
 
