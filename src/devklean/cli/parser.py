@@ -5,8 +5,8 @@ import argparse
 from devklean._version import __version__
 
 COMMAND_NAMES = frozenset({"scan", "clean", "stats", "restore", "config", "plugins"})
-IMPLEMENTED_COMMANDS = frozenset({"scan", "clean"})
-RESERVED_COMMANDS = frozenset({"stats", "restore", "config", "plugins"})
+IMPLEMENTED_COMMANDS = frozenset({"scan", "clean", "restore"})
+RESERVED_COMMANDS = frozenset({"stats", "config", "plugins"})
 GLOBAL_OPTIONS = frozenset({"-h", "--help", "--version"})
 
 
@@ -62,8 +62,8 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
     )
     _add_clean_arguments(clean_parser)
 
+    subparsers.add_parser("restore", help="List and restore deleted items")
     subparsers.add_parser("stats", help="Show cleanup statistics (not yet implemented)")
-    subparsers.add_parser("restore", help="Restore deleted items (not yet implemented)")
     subparsers.add_parser("config", help="Manage configuration (not yet implemented)")
     subparsers.add_parser("plugins", help="Manage plugins (not yet implemented)")
 

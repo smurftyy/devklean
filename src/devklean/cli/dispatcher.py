@@ -5,6 +5,7 @@ from typing import Callable
 
 from devklean.cli.commands.clean import run_clean
 from devklean.cli.commands.scan import run_scan
+from devklean.cli.commands.restore import run_restore
 from devklean.deletion import default_deletion_strategy
 from devklean.cli.parser import IMPLEMENTED_COMMANDS, RESERVED_COMMANDS
 from devklean.config.models import AppConfig
@@ -17,6 +18,7 @@ DEFAULT_COMMAND = "clean"
 _COMMANDS: dict[str, CommandHandler] = {
     "scan": run_scan,
     "clean": run_clean,
+    "restore": run_restore,
 }
 
 

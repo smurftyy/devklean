@@ -28,11 +28,13 @@ class TrashStrategy(DeletionStrategy):
     ) -> DeleteResult:
         deleted: list[str] = []
         failed: list[DeleteFailure] = []
+        trashed: list[str] = []
 
         for item in items:
             try:
-                self._trash_path(Path(item.path))
+                trashed_path = self._trash_path(Path(item.path))
                 deleted.append(item.path)
+                trashed.append(str(trashed_path))
             except Exception as exc:  # pragma: no cover - platform-specific failures
                 failed.append(DeleteFailure(path=item.path, error=str(exc)))
 
@@ -40,23 +42,24 @@ class TrashStrategy(DeletionStrategy):
             deleted=tuple(deleted),
             failed=tuple(failed),
             total_size=total_size,
+            trashed=tuple(trashed),
         )
 
-    def _trash_path(self, source: Path) -> None:
+    def _trash_path(self, source: Path) -> Path:
         if os.name == "nt":
-            self._trash_windows(source)
-            return
-        self._trash_unix(source)
+            return self._trash_windows(source)
+        return self._trash_unix(source)
 
-    def _trash_unix(self, source: Path) -> None:
+    def _trash_unix(self, source: Path) -> Path:
         trash_root = self._trash_root_for_unix()
         trash_files = trash_root / "files"
         trash_files.mkdir(parents=True, exist_ok=True)
 
         destination = self._unique_destination(trash_files, source.name)
         shutil.move(str(source), str(destination))
+        return destination
 
-    def _trash_windows(self, source: Path) -> None:
+    def _trash_windows(self, source: Path) -> Path:
         class SHFILEOPSTRUCTW(ctypes.Structure):
             _fields_ = [
                 ("hwnd", wintypes.HWND),
@@ -85,6 +88,7 @@ class TrashStrategy(DeletionStrategy):
             raise OSError(f"Windows trash operation failed with code {result}")
         if operation.fAnyOperationsAborted:
             raise OSError("Windows trash operation was aborted")
+        return source
 
     def _trash_root_for_unix(self) -> Path:
         if self._trash_root is not None:

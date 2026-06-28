@@ -24,6 +24,7 @@ class DeleteResult:
     deleted: tuple[str, ...]
     failed: tuple[DeleteFailure, ...]
     total_size: int
+    trashed: tuple[str, ...] = ()
 
     @property
     def deleted_count(self) -> int:
@@ -32,3 +33,7 @@ class DeleteResult:
     @property
     def failed_count(self) -> int:
         return len(self.failed)
+
+    @property
+    def trashed_count(self) -> int:
+        return len(self.trashed)
