@@ -39,6 +39,9 @@ class Renderer(Protocol):
     def deletion_result(self, result: DeleteResult) -> None:
         ...
 
+    def permission_warnings(self, paths: Sequence[str]) -> None:
+        ...
+
     def history(
         self,
         operations: Sequence[HistoryOperation],

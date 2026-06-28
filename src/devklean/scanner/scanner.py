@@ -67,7 +67,17 @@ def get_dir_size(path: str) -> int:
 
 
 def scan(root: str, settings: ScanSettings | None = None) -> list[CleanableItem]:
-    """Discover cleanable directories under root using scan settings."""
+    """Discover cleanable directories under root (backward-compatible wrapper)."""
+    return scan_tree(root, settings).items
+
+
+def scan_tree(root: str, settings: ScanSettings | None = None) -> ScanResult:
+    """Discover cleanable directories, reporting permission-denied paths.
+
+    Permission errors during traversal are collected (via ``os.walk``'s
+    ``onerror`` hook) rather than silently swallowed, so the caller can tell the
+    user which paths were skipped. Scanning continues past them.
+    """
     active = settings or ScanSettings.defaults()
 
     # Safe: absolute root => os.walk yields absolute dirpaths; ignored paths
@@ -81,8 +91,15 @@ def scan(root: str, settings: ScanSettings | None = None) -> list[CleanableItem]
 
     found: list[CleanableItem] = []
     found_paths: set[str] = set()
+    permission_errors: list[str] = []
 
-    for dirpath, dirnames, _ in os.walk(root, topdown=True, followlinks=False):
+    def _on_walk_error(error: OSError) -> None:
+        if isinstance(error, PermissionError):
+            permission_errors.append(error.filename or str(error))
+
+    for dirpath, dirnames, _ in os.walk(
+        root, topdown=True, followlinks=False, onerror=_on_walk_error
+    ):
         if has_ignored_paths and dir_is_under_ignored_path(dirpath, ignored_paths):
             dirnames.clear()
             continue
@@ -116,7 +133,7 @@ def scan(root: str, settings: ScanSettings | None = None) -> list[CleanableItem]
 
         dirnames[:] = kept_dirnames
 
-    return found
+    return ScanResult(items=found, permission_errors=permission_errors)
 
 
 # Backward-compatible alias.

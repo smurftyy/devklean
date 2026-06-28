@@ -55,6 +55,10 @@ class JsonRenderer:
     def deletion_result(self, result: DeleteResult) -> None:
         pass
 
+    def permission_warnings(self, paths) -> None:
+        # JSON scan schema is versioned; warnings are surfaced in text mode only.
+        pass
+
     def history(
         self,
         operations: Sequence[HistoryOperation],
