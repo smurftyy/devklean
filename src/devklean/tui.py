@@ -3,6 +3,11 @@ from __future__ import annotations
 import curses
 from typing import List, Optional
 
+from devklean.cli.confirmation import (
+    DEFAULT_LARGE_THRESHOLD,
+    confirm_large_deletion,
+    exceeds_threshold,
+)
 from devklean.deletion import DeletionStrategy, delete_items
 from devklean.formatting import format_size, truncate
 from devklean.models import CleanableItem
@@ -88,6 +93,8 @@ def run_interactive(
     found: List[CleanableItem],
     dry_run: bool,
     deletion_strategy: DeletionStrategy | None = None,
+    *,
+    confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
     items = items_by_size_desc(found)
 
@@ -106,6 +113,12 @@ def run_interactive(
     if dry_run:
         renderer.dry_run_selected(len(selected))
         return
+
+    # Large selections require an explicit typed confirmation even here.
+    if exceeds_threshold(total_size, confirm_threshold):
+        if not confirm_large_deletion(len(selected), total_size, confirm_threshold):
+            renderer.aborted()
+            return
 
     result = delete_items(selected, total_size, deletion_strategy)
     renderer.deletion_result(result)

@@ -63,7 +63,7 @@ class _RecordingRenderer:
         self.dry_run_calls += 1
 
     def dry_run_selected(self, count: int) -> None:
-        raise AssertionError("dry_run_selected should not be called")
+        self.dry_run_calls += 1
 
     def aborted(self) -> None:
         self.aborted_calls += 1

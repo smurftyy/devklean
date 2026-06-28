@@ -47,6 +47,12 @@ def _add_clean_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Permit deletion of symbolic links (blocked by default)",
     )
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip the confirmation prompt (large deletions still require typing DELETE)",
+    )
 
 
 def _add_subparsers(parser: argparse.ArgumentParser) -> None:

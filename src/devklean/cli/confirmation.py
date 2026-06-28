@@ -33,10 +33,12 @@ def confirm_large_deletion(
     total_size: int,
     threshold: int,
     *,
-    input_fn: Callable[[str], str] = input,
+    input_fn: Callable[[str], str] | None = None,
     stream: TextIO | None = None,
 ) -> bool:
     """Prompt for an explicit typed confirmation; return True only on 'DELETE'."""
+    # Resolve at call time so a monkeypatched builtins.input is honored.
+    ask = input_fn if input_fn is not None else input
     out = stream if stream is not None else sys.stderr
     console = Console(stream=out)
     word = "directory" if count == 1 else "directories"
@@ -46,5 +48,5 @@ def confirm_large_deletion(
     console.detail(
         f"This exceeds the {format_size(threshold)} safety threshold."
     )
-    answer = input_fn(f"Type {_CONFIRM_WORD} to confirm: ")
+    answer = ask(f"Type {_CONFIRM_WORD} to confirm: ")
     return answer.strip() == _CONFIRM_WORD
