@@ -18,7 +18,7 @@ from typing import Callable, TextIO
 from devklean.formatting import format_size
 from devklean.output.console import Console
 
-DEFAULT_LARGE_THRESHOLD = 1024 ** 3  # 1 GiB
+DEFAULT_LARGE_THRESHOLD = 1024**3  # 1 GiB
 
 _CONFIRM_WORD = "DELETE"
 
@@ -42,11 +42,7 @@ def confirm_large_deletion(
     out = stream if stream is not None else sys.stderr
     console = Console(stream=out)
     word = "directory" if count == 1 else "directories"
-    console.warning(
-        f"About to delete {count} {word} (~{format_size(total_size)})."
-    )
-    console.detail(
-        f"This exceeds the {format_size(threshold)} safety threshold."
-    )
+    console.warning(f"About to delete {count} {word} (~{format_size(total_size)}).")
+    console.detail(f"This exceeds the {format_size(threshold)} safety threshold.")
     answer = ask(f"Type {_CONFIRM_WORD} to confirm: ")
     return answer.strip() == _CONFIRM_WORD

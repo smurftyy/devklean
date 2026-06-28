@@ -4,7 +4,6 @@ import itertools
 import os
 import sys
 import threading
-import time
 from typing import TextIO
 
 _SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
@@ -45,7 +44,7 @@ class Spinner:
             self._stream.write(f"\r{frame} {self._label}")
             self._stream.flush()
 
-    def start(self) -> "Spinner":
+    def start(self) -> Spinner:
         if not self._enabled:
             return self
         self._write_frame(_SPINNER_FRAMES[0])
@@ -72,7 +71,7 @@ class Spinner:
             self._stream.write("\r\033[K")  # clear the spinner line
             self._stream.flush()
 
-    def __enter__(self) -> "Spinner":
+    def __enter__(self) -> Spinner:
         return self.start()
 
     def __exit__(self, *exc) -> None:
@@ -118,7 +117,7 @@ class ProgressBar:
         self._stream.write("\r\033[K")
         self._stream.flush()
 
-    def __enter__(self) -> "ProgressBar":
+    def __enter__(self) -> ProgressBar:
         return self
 
     def __exit__(self, *exc) -> None:

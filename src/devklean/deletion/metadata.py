@@ -110,21 +110,22 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
     display_name = item.get("display_name")
     size = item.get("size")
 
-    if not all(
-        [
-            isinstance(deletion_id, str),
-            run_id is None or isinstance(run_id, str),
-            isinstance(timestamp, str),
-            isinstance(strategy, str),
-            isinstance(original_path, str),
-            isinstance(display_name, str),
-            isinstance(size, int),
-        ]
+    schema_version = data.get("schema_version", 1)
+
+    if not (
+        isinstance(deletion_id, str)
+        and (run_id is None or isinstance(run_id, str))
+        and isinstance(timestamp, str)
+        and isinstance(strategy, str)
+        and isinstance(original_path, str)
+        and isinstance(display_name, str)
+        and isinstance(size, int)
+        and isinstance(schema_version, int)
     ):
         raise ValueError("missing or wrong-typed metadata fields")
 
     return DeletionMetadataRecord(
-        schema_version=int(data.get("schema_version", 1)),
+        schema_version=schema_version,
         deletion_id=deletion_id,
         run_id=run_id,
         timestamp=timestamp,
@@ -217,6 +218,7 @@ class MetadataManager:
                 ),
                 trash=DeletionMetadataTrash(path=trashed_path) if trashed_path else None,
             )
-            filename = f"{record.timestamp.replace(':', '').replace('+00:00', 'Z')}_{record.deletion_id}.json"
+            stamp = record.timestamp.replace(":", "").replace("+00:00", "Z")
+            filename = f"{stamp}_{record.deletion_id}.json"
             path = self._storage_dir / filename
             path.write_text(json.dumps(record.to_dict(), indent=2) + "\n", encoding="utf-8")

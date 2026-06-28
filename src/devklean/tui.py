@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import curses
-from typing import List, Optional
 
 from devklean.cli.confirmation import (
     DEFAULT_LARGE_THRESHOLD,
@@ -15,7 +14,7 @@ from devklean.output.base import Renderer
 from devklean.output.sorting import items_by_size_desc
 
 
-def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optional[List[int]]:
+def interactive_ui(stdscr, items: list[CleanableItem], dry_run: bool) -> list[int] | None:
     curses.curs_set(0)
     stdscr.keypad(True)
 
@@ -36,7 +35,8 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
 
         if len(items) == 0:
             stdscr.addnstr(
-                list_top, 0,
+                list_top,
+                0,
                 "No matching directories found — press Q to exit.",
                 width,
             )
@@ -90,7 +90,7 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
 
 def run_interactive(
     renderer: Renderer,
-    found: List[CleanableItem],
+    found: list[CleanableItem],
     dry_run: bool,
     deletion_strategy: DeletionStrategy | None = None,
     *,

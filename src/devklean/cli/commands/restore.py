@@ -82,8 +82,10 @@ def run_restore(args, renderer, config) -> int:
 
     if snapshot.invalid_count:
         plural = "s" if snapshot.invalid_count != 1 else ""
-        print(f"Skipped {snapshot.invalid_count} corrupt metadata record{plural} "
-              f"— run `devclean doctor` to inspect.")
+        print(
+            f"Skipped {snapshot.invalid_count} corrupt metadata record{plural} "
+            f"— run `devclean doctor` to inspect."
+        )
 
     selection = input(_selection_prompt(len(entries)))
     selected_indices = _parse_selection(selection, len(entries))
@@ -98,7 +100,6 @@ def run_restore(args, renderer, config) -> int:
 
     restored: list[str] = []
     skipped: list[str] = []
-    failed: list[str] = []
 
     for index in selected_indices:
         entry = entries[index]

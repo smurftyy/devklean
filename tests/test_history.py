@@ -12,14 +12,14 @@ from pathlib import Path
 import pytest
 
 from devklean.deletion.history import HistoryOperation, build_history
-from devklean.output.json import JsonRenderer
-from devklean.output.text import TextRenderer
 from devklean.deletion.metadata import (
     DeletionMetadataItem,
     DeletionMetadataRecord,
     StoredDeletionMetadata,
 )
 from devklean.output.history_payload import build_history_payload
+from devklean.output.json import JsonRenderer
+from devklean.output.text import TextRenderer
 
 
 def _stored(
@@ -153,9 +153,7 @@ def utc_timezone(monkeypatch):
 def test_json_renderer_emits_history() -> None:
     stream = StringIO()
     renderer = JsonRenderer(stream=stream)
-    operations = (
-        HistoryOperation("run1", "2026-06-28T14:00:00+00:00", "trash", 3, 400),
-    )
+    operations = (HistoryOperation("run1", "2026-06-28T14:00:00+00:00", "trash", 3, 400),)
 
     renderer.history(operations, invalid_count=0)
 
@@ -165,9 +163,7 @@ def test_json_renderer_emits_history() -> None:
 
 
 def test_text_renderer_history_lists_operations(capsys, utc_timezone) -> None:
-    operations = (
-        HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 3, 400),
-    )
+    operations = (HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 3, 400),)
 
     TextRenderer().history(operations, invalid_count=0)
 
@@ -184,9 +180,7 @@ def test_text_renderer_history_empty_state(capsys) -> None:
 
 
 def test_text_renderer_history_corrupt_note_points_to_doctor(capsys) -> None:
-    operations = (
-        HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 1, 100),
-    )
+    operations = (HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 1, 100),)
 
     TextRenderer().history(operations, invalid_count=2)
 

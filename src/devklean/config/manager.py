@@ -3,9 +3,8 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
-from devklean.config.defaults import DEFAULT_TARGETS
 from devklean.config.models import AppConfig, DefaultsConfig
 from devklean.config.paths import get_config_path
 from devklean.config.targets import merge_targets
@@ -44,8 +43,8 @@ class ConfigManager:
 
     def __init__(
         self,
-        config_path: Optional[Path] = None,
-        project_dir: Optional[Path] = None,
+        config_path: Path | None = None,
+        project_dir: Path | None = None,
     ) -> None:
         self._config_path = config_path if config_path is not None else get_config_path()
         self._project_dir = project_dir if project_dir is not None else Path.cwd()
@@ -99,7 +98,7 @@ class ConfigManager:
             warnings.append(f"Could not parse config '{path}': {exc}; ignoring it.")
             return {}
 
-    def _find_project_config(self) -> Optional[Path]:
+    def _find_project_config(self) -> Path | None:
         current = self._project_dir.resolve()
         for directory in (current, *current.parents):
             candidate = directory / PROJECT_CONFIG_NAME
@@ -112,15 +111,10 @@ class ConfigManager:
         # Lists: unioned across layers preserving order.
         defaults = self._merge_defaults(layers)
 
-        exclude_dirs = _union_lists(
-            *[_as_str_list(layer.get("exclude", [])) for layer in layers]
-        )
+        exclude_dirs = _union_lists(*[_as_str_list(layer.get("exclude", [])) for layer in layers])
 
         target_excludes = _union_lists(
-            *[
-                _as_str_list(layer.get("targets", {}).get("exclude", []))
-                for layer in layers
-            ]
+            *[_as_str_list(layer.get("targets", {}).get("exclude", [])) for layer in layers]
         )
         custom_targets: dict[str, str] = {}
         for layer in layers:
@@ -133,19 +127,13 @@ class ConfigManager:
         ignored_paths = tuple(
             _normalize_path(path)
             for path in _union_lists(
-                *[
-                    _as_str_list(layer.get("ignore", {}).get("paths", []))
-                    for layer in layers
-                ]
+                *[_as_str_list(layer.get("ignore", {}).get("paths", [])) for layer in layers]
             )
         )
         ignored_directories = tuple(
             _union_lists(
                 exclude_dirs,
-                *[
-                    _as_str_list(layer.get("ignore", {}).get("directories", []))
-                    for layer in layers
-                ],
+                *[_as_str_list(layer.get("ignore", {}).get("directories", [])) for layer in layers],
             )
         )
 
@@ -193,9 +181,7 @@ def _validate(data: dict[str, Any], source: str, warnings: list[str]) -> None:
     if isinstance(defaults_section, dict):
         for key in defaults_section:
             if key not in _KNOWN_DEFAULTS:
-                warnings.append(
-                    f"Unknown key 'defaults.{key}' in '{source}' (ignored)."
-                )
+                warnings.append(f"Unknown key 'defaults.{key}' in '{source}' (ignored).")
 
 
 def _union_lists(*lists: list[str]) -> list[str]:
@@ -219,7 +205,14 @@ def _normalize_path(path: str) -> str:
 def _explicit_path_provided(argv: list[str]) -> bool:
     """Return True when a positional path appears on the command line."""
     command_names = {
-        "scan", "clean", "history", "doctor", "stats", "restore", "config", "plugins",
+        "scan",
+        "clean",
+        "history",
+        "doctor",
+        "stats",
+        "restore",
+        "config",
+        "plugins",
     }
     index = 1
     if index < len(argv) and argv[index] in command_names:

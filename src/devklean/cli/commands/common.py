@@ -24,7 +24,9 @@ def scan_directory(
     report = scan_tree(root, settings=config.scan_settings)
     get_logger().info(
         "scan root=%s found=%d permission_errors=%d",
-        root, len(report.items), len(report.permission_errors),
+        root,
+        len(report.items),
+        len(report.permission_errors),
     )
     if report.permission_errors:
         renderer.permission_warnings(report.permission_errors)

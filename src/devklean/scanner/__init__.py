@@ -1,12 +1,11 @@
+# Backward-compatible alias used by tests and external imports.
+from devklean.config.defaults import DEFAULT_TARGETS
 from devklean.scanner.filters import (
     dir_is_under_ignored_path,
     normalize_paths,
     path_is_excluded,
 )
 from devklean.scanner.scanner import ScanResult, get_dir_size, scan, scan_tree
-
-# Backward-compatible alias used by tests and external imports.
-from devklean.config.defaults import DEFAULT_TARGETS
 
 TARGETS = DEFAULT_TARGETS
 

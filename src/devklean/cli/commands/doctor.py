@@ -40,17 +40,13 @@ def run_doctor(args, renderer, config) -> int:
 
     if not report.corrupt:
         console.plain()
-        console.detail(
-            "No corrupt records to remove. Orphaned records are kept as history."
-        )
+        console.detail("No corrupt records to remove. Orphaned records are kept as history.")
         return 0
 
     if not getattr(args, "yes", False):
         count = len(report.corrupt)
         plural = "s" if count != 1 else ""
-        confirm = input(
-            f"\nRemove {count} corrupt metadata record{plural}? (y/N) "
-        ).strip().lower()
+        confirm = input(f"\nRemove {count} corrupt metadata record{plural}? (y/N) ").strip().lower()
         if confirm != "y":
             console.detail("Kept all records. Nothing removed.")
             return 0

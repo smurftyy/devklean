@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 
 from devklean.config.defaults import DEFAULT_TARGETS
 
-
-_DEFAULT_CONFIRM_THRESHOLD = 1024 ** 3  # 1 GiB
+_DEFAULT_CONFIRM_THRESHOLD = 1024**3  # 1 GiB
 
 
 @dataclass(frozen=True)

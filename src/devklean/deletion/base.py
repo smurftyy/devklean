@@ -28,8 +28,7 @@ class BaseDeletionStrategy:
         safe, blocked = self._validator.partition(items)
 
         blocked_failures = tuple(
-            DeleteFailure(path=item.path, error=violation.message)
-            for item, violation in blocked
+            DeleteFailure(path=item.path, error=violation.message) for item, violation in blocked
         )
 
         safe_total = sum(item.size for item in safe)

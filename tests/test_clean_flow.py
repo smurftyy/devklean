@@ -70,8 +70,12 @@ def test_default_yes_below_threshold_skips_prompt(monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", fail_input)
 
     run_standard(
-        renderer, _items(100), dry_run=False, deletion_strategy=strategy,
-        default_yes=True, confirm_threshold=1024 ** 3,
+        renderer,
+        _items(100),
+        dry_run=False,
+        deletion_strategy=strategy,
+        default_yes=True,
+        confirm_threshold=1024**3,
     )
 
     assert strategy.called is True
@@ -83,8 +87,12 @@ def test_below_threshold_without_default_yes_prompts(monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", lambda p: "y")
 
     run_standard(
-        renderer, _items(100), dry_run=False, deletion_strategy=strategy,
-        default_yes=False, confirm_threshold=1024 ** 3,
+        renderer,
+        _items(100),
+        dry_run=False,
+        deletion_strategy=strategy,
+        default_yes=False,
+        confirm_threshold=1024**3,
     )
 
     assert renderer.prompts == [(1, 100)]
@@ -97,8 +105,12 @@ def test_large_deletion_requires_typed_delete_even_with_default_yes(monkeypatch)
     monkeypatch.setattr("builtins.input", lambda p: next(answers))
 
     run_standard(
-        renderer, _items(2 * 1024 ** 3), dry_run=False, deletion_strategy=strategy,
-        default_yes=True, confirm_threshold=1024 ** 3,
+        renderer,
+        _items(2 * 1024**3),
+        dry_run=False,
+        deletion_strategy=strategy,
+        default_yes=True,
+        confirm_threshold=1024**3,
     )
 
     # the plain y/N prompt was NOT used; the typed gate ran instead
@@ -111,8 +123,12 @@ def test_large_deletion_aborts_when_not_confirmed(monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", lambda p: "nope")
 
     run_standard(
-        renderer, _items(2 * 1024 ** 3), dry_run=False, deletion_strategy=strategy,
-        default_yes=True, confirm_threshold=1024 ** 3,
+        renderer,
+        _items(2 * 1024**3),
+        dry_run=False,
+        deletion_strategy=strategy,
+        default_yes=True,
+        confirm_threshold=1024**3,
     )
 
     assert strategy.called is False

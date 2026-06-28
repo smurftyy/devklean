@@ -53,7 +53,9 @@ def test_clean_end_to_end_deletes(tmp_path, monkeypatch) -> None:
     assert code == 0
     assert not nm.exists()  # moved to trash
     # a metadata record was written
-    records = MetadataManager(storage_dir=tmp_path / "data" / "devklean" / "deletions").load_records()
+    records = MetadataManager(
+        storage_dir=tmp_path / "data" / "devklean" / "deletions"
+    ).load_records()
     assert len(records.records) == 1
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from devklean.config import ConfigManager, DEFAULT_TARGETS, ScanSettings, merge_targets
+from devklean.config import DEFAULT_TARGETS, ConfigManager, ScanSettings, merge_targets
 from devklean.scanner import scan
 
 

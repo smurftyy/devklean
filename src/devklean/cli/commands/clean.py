@@ -6,8 +6,8 @@ from devklean.cli.confirmation import (
     confirm_large_deletion,
     exceeds_threshold,
 )
-from devklean.deletion import DeletionStrategy, delete_items
 from devklean.config.models import AppConfig
+from devklean.deletion import DeletionStrategy, delete_items
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
 from devklean.tui import run_interactive
@@ -72,13 +72,20 @@ def run_clean(
 
     if args.interactive:
         run_interactive(
-            renderer, found, args.dry_run, deletion_strategy,
+            renderer,
+            found,
+            args.dry_run,
+            deletion_strategy,
             confirm_threshold=confirm_threshold,
         )
     else:
         run_standard(
-            renderer, found, args.dry_run, deletion_strategy,
-            default_yes=default_yes, confirm_threshold=confirm_threshold,
+            renderer,
+            found,
+            args.dry_run,
+            deletion_strategy,
+            default_yes=default_yes,
+            confirm_threshold=confirm_threshold,
         )
 
     return 0

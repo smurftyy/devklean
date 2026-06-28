@@ -44,10 +44,12 @@ class JsonRenderer:
         pass
 
     def invalid_directory(self, path: str) -> None:
-        self._emit(build_error_payload(
-            "invalid_directory",
-            f"'{path}' is not a directory.",
-        ))
+        self._emit(
+            build_error_payload(
+                "invalid_directory",
+                f"'{path}' is not a directory.",
+            )
+        )
 
     def confirm_prompt(self, count: int, total_size: int = 0) -> str:
         raise NotImplementedError("confirm_prompt is not supported in JSON mode")

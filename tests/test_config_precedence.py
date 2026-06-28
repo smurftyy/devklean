@@ -36,7 +36,7 @@ def test_default_keys_have_sane_defaults(tmp_path: Path) -> None:
     config = ConfigManager(config_path=tmp_path / "missing.toml", project_dir=tmp_path).load()
     assert config.defaults.default_yes is False
     assert config.defaults.theme == "default"
-    assert config.defaults.confirm_threshold == 1024 ** 3
+    assert config.defaults.confirm_threshold == 1024**3
 
 
 def test_top_level_exclude_merges_into_ignored_directories(tmp_path: Path) -> None:
@@ -50,11 +50,11 @@ def test_top_level_exclude_merges_into_ignored_directories(tmp_path: Path) -> No
 
 
 def test_project_config_overrides_global_scalar(tmp_path: Path) -> None:
-    global_path = _global(tmp_path, "[defaults]\ndefault_yes = false\ntheme = \"default\"")
+    global_path = _global(tmp_path, '[defaults]\ndefault_yes = false\ntheme = "default"')
     project_dir = tmp_path / "proj" / "sub"
     project_dir.mkdir(parents=True)
     (tmp_path / "proj" / ".devklean.toml").write_text(
-        "[defaults]\ndefault_yes = true\ntheme = \"mono\"", encoding="utf-8"
+        '[defaults]\ndefault_yes = true\ntheme = "mono"', encoding="utf-8"
     )
 
     config = ConfigManager(config_path=global_path, project_dir=project_dir).load()

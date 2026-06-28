@@ -32,7 +32,9 @@ def delete_items(
     if dry_run:
         logger.info(
             "dry-run plan strategy=%s would_delete=%d size=%d",
-            _strategy_name(backend), result.deleted_count, result.total_size,
+            _strategy_name(backend),
+            result.deleted_count,
+            result.total_size,
         )
         return result
 
@@ -42,7 +44,10 @@ def delete_items(
         logger.warning("delete failed path=%s error=%s", failure.path, failure.error)
     logger.info(
         "deletion summary strategy=%s deleted=%d failed=%d size=%d",
-        _strategy_name(backend), result.deleted_count, result.failed_count, result.total_size,
+        _strategy_name(backend),
+        result.deleted_count,
+        result.failed_count,
+        result.total_size,
     )
 
     manager = metadata_manager or default_metadata_manager()

@@ -38,7 +38,9 @@ def main() -> None:
 
     # Surface config warnings on stderr so stdout/JSON stay clean.
     if result.warnings:
-        warn_console = Console(stream=sys.stderr, theme=getattr(config.defaults, "theme", "default"))
+        warn_console = Console(
+            stream=sys.stderr, theme=getattr(config.defaults, "theme", "default")
+        )
         for warning in result.warnings:
             warn_console.warning(warning)
 

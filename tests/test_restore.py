@@ -28,9 +28,7 @@ def _valid(directory: Path, name: str, trash_path: Path) -> None:
     (directory / f"{name}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_restore_degrades_gracefully_and_warns_about_corrupt(
-    tmp_path, monkeypatch, capsys
-) -> None:
+def test_restore_degrades_gracefully_and_warns_about_corrupt(tmp_path, monkeypatch, capsys) -> None:
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     meta = _meta_dir(tmp_path)
     trash = tmp_path / "trash" / "node_modules"

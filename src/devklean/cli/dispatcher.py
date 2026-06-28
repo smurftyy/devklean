@@ -6,11 +6,11 @@ from typing import Callable
 from devklean.cli.commands.clean import run_clean
 from devklean.cli.commands.doctor import run_doctor
 from devklean.cli.commands.history import run_history
-from devklean.cli.commands.scan import run_scan
 from devklean.cli.commands.restore import run_restore
-from devklean.deletion import default_deletion_strategy
+from devklean.cli.commands.scan import run_scan
 from devklean.cli.parser import IMPLEMENTED_COMMANDS, RESERVED_COMMANDS
 from devklean.config.models import AppConfig
+from devklean.deletion import default_deletion_strategy
 from devklean.output.base import Renderer
 
 CommandHandler = Callable[..., int]

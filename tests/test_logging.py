@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from devklean.logging_setup import (
     configure_logging,
@@ -61,9 +60,9 @@ def test_delete_items_logs_deletion(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     configure_logging()
 
+    from devklean.deletion.metadata import MetadataManager
     from devklean.deletion.service import delete_items
     from devklean.deletion.trash import TrashStrategy
-    from devklean.deletion.metadata import MetadataManager
     from devklean.models import CleanableItem
 
     target = tmp_path / "proj" / "node_modules"
@@ -71,7 +70,8 @@ def test_delete_items_logs_deletion(tmp_path, monkeypatch) -> None:
     item = CleanableItem(str(target), "node_modules", 100, "Node.js")
 
     delete_items(
-        [item], 100,
+        [item],
+        100,
         strategy=TrashStrategy(trash_root=tmp_path / "trash"),
         metadata_manager=MetadataManager(storage_dir=tmp_path / "meta"),
     )

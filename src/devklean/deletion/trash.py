@@ -4,8 +4,7 @@ import ctypes
 import os
 import shutil
 import sys
-from ctypes import byref, create_unicode_buffer
-from ctypes import wintypes
+from ctypes import byref, create_unicode_buffer, wintypes
 from pathlib import Path
 from typing import Sequence
 
@@ -89,7 +88,8 @@ class TrashStrategy(BaseDeletionStrategy):
         operation.pFrom = ctypes.cast(source_buffer, wintypes.LPCWSTR)
         operation.fFlags = fof_allowundo | fof_noconfirmation | fof_silent
 
-        result = ctypes.windll.shell32.SHFileOperationW(byref(operation))
+        # windll exists only on Windows; this branch only runs there.
+        result = ctypes.windll.shell32.SHFileOperationW(byref(operation))  # type: ignore[attr-defined]
         if result != 0:
             raise OSError(f"Windows trash operation failed with code {result}")
         if operation.fAnyOperationsAborted:
