@@ -40,7 +40,7 @@ def _add_clean_arguments(parser: argparse.ArgumentParser) -> None:
         "-i",
         "--interactive",
         action="store_true",
-        help="Interactively select items to delete",
+        help="Interactively select items to delete (Linux/macOS only)",
     )
     parser.add_argument(
         "--allow-symlinks",

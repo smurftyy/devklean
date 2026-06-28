@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from devklean.cli.commands.common import scan_directory
 from devklean.cli.confirmation import (
     DEFAULT_LARGE_THRESHOLD,
@@ -10,7 +12,6 @@ from devklean.config.models import AppConfig
 from devklean.deletion import DeletionStrategy, delete_items
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
-from devklean.tui import run_interactive
 
 
 def _confirm_deletion(
@@ -71,6 +72,20 @@ def run_clean(
     confirm_threshold = getattr(defaults, "confirm_threshold", DEFAULT_LARGE_THRESHOLD)
 
     if args.interactive:
+        # Interactive mode relies on curses, which is unavailable on Windows.
+        # Fail with a clear message rather than crashing on the curses import.
+        if sys.platform == "win32":
+            print(
+                "devklean: interactive mode (-i/--interactive) isn't available on "
+                "Windows yet. Run without -i, or see the 'Platform support' section "
+                "of the README for details.",
+                file=sys.stderr,
+            )
+            return 2
+        # Imported lazily so non-interactive commands never load the TUI/curses
+        # stack, and to avoid a circular import (tui -> cli -> clean -> tui).
+        from devklean.tui import run_interactive
+
         run_interactive(
             renderer,
             found,

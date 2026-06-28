@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import curses
-
 from devklean.cli.confirmation import (
     DEFAULT_LARGE_THRESHOLD,
     confirm_large_deletion,
@@ -15,6 +13,8 @@ from devklean.output.sorting import items_by_size_desc
 
 
 def interactive_ui(stdscr, items: list[CleanableItem], dry_run: bool) -> list[int] | None:
+    import curses  # Unix-only; imported lazily so this module loads on Windows.
+
     curses.curs_set(0)
     stdscr.keypad(True)
 
@@ -96,6 +96,8 @@ def run_interactive(
     *,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
+    import curses  # Unix-only; imported lazily so this module loads on Windows.
+
     items = items_by_size_desc(found)
 
     selected_indices = curses.wrapper(interactive_ui, items, dry_run)

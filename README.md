@@ -63,7 +63,7 @@ devklean scan --json          # machine-readable output for tooling
 devklean clean                  # scan + delete with a y/N confirmation
 devklean clean ~/projects       # clean a specific path
 devklean clean --dry-run        # show what *would* be deleted; delete nothing
-devklean clean -i               # interactive: pick items in a TUI
+devklean clean -i               # interactive: pick items in a TUI (Linux/macOS only)
 devklean clean --allow-symlinks # permit deleting symlinked targets (blocked by default)
 devklean clean -y               # skip the y/N prompt (large deletions still require typing DELETE)
 ```
@@ -71,7 +71,7 @@ devklean clean -y               # skip the y/N prompt (large deletions still req
 | Flag | Meaning |
 | --- | --- |
 | `--dry-run` | Report what would be deleted; make no changes. Output says "would delete". |
-| `-i`, `--interactive` | Choose items in a terminal UI (SPACE select, A all, D none, ENTER confirm, Q quit). |
+| `-i`, `--interactive` | Choose items in a terminal UI (SPACE select, A all, D none, ENTER confirm, Q quit). **Linux/macOS only** — see [Platform support](#platform-support). |
 | `--allow-symlinks` | Allow deleting symbolic links. Off by default (symlinks are blocked). |
 | `-y`, `--yes` | Skip the standard confirmation. Deletions over the size threshold still require typing `DELETE`. |
 
@@ -129,6 +129,18 @@ Delete 3 directories (~834.0 MB)? (y/N) y
 ```
 
 <!-- TODO: insert terminal recording GIF of interactive mode (`devklean clean -i`) here -->
+
+## Platform support
+
+`devklean` runs on **Linux, macOS, and Windows**. All core commands — `scan`,
+`clean`, `history`, `doctor`, and `restore` — work on every platform.
+
+**Known limitation:** interactive mode (`-i` / `--interactive`) is **Linux/macOS
+only** for now. It is built on Python's `curses` module, which is not available
+on Windows. Running `devklean clean -i` on Windows prints a clear message and
+exits without making changes, rather than crashing — use `devklean clean`
+(non-interactive) instead. Windows support for interactive mode may come in a
+future release.
 
 ## Configuration
 

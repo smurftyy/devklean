@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Non-interactive commands no longer crash on Windows. The `curses` import (a
+  Unix-only module) is now loaded lazily, so `scan`, `clean`, `history`,
+  `doctor`, and `restore` import and run on Windows.
+
+### Known limitations
+
+- Interactive mode (`-i` / `--interactive`) is **Linux/macOS only** because it
+  depends on `curses`, which is unavailable on Windows. On Windows, `devklean
+  clean -i` now prints a clear message and exits cleanly instead of raising an
+  `ImportError`. All other commands work on Windows.
+
 ## [0.1.0] - 2026-06-28
 
 First public pre-release.
