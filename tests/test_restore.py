@@ -1,52 +1,33 @@
-"""Tests for the restore command's graceful degradation."""
+"""Tests for the informational `restore` command.
+
+Since items are sent to the native OS trash (which devklean does not own or
+track), `restore` no longer moves files back — it explains how to recover them
+through the OS trash UI.
+"""
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
+from argparse import Namespace
 
 from devklean.cli.commands.restore import run_restore
 
 
-def _meta_dir(tmp_path: Path) -> Path:
-    return tmp_path / "data" / "devklean" / "deletions"
+def test_restore_explains_native_trash_recovery(capsys) -> None:
+    code = run_restore(Namespace(), None, None)
 
-
-def _valid(directory: Path, name: str, trash_path: Path) -> None:
-    directory.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "schema_version": 3,
-        "deletion": {
-            "id": name,
-            "run_id": "run1",
-            "timestamp": "2026-06-28T14:00:00+00:00",
-            "strategy": "trash",
-        },
-        "item": {"original_path": f"/tmp/{name}", "display_name": name, "size": 100},
-        "trash": {"path": str(trash_path)},
-    }
-    (directory / f"{name}.json").write_text(json.dumps(payload), encoding="utf-8")
-
-
-def test_restore_degrades_gracefully_and_warns_about_corrupt(
-    tmp_path, monkeypatch, capsys
-) -> None:
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
-    meta = _meta_dir(tmp_path)
-    trash = tmp_path / "trash" / "node_modules"
-    trash.mkdir(parents=True)
-    _valid(meta, "a", trash)
-    (meta / "bad.json").write_text("{ broken", encoding="utf-8")
-
-    # cancel at the selection prompt
-    monkeypatch.setattr("builtins.input", lambda prompt: "")
-
-    code = run_restore(object(), None, None)
-
-    out = capsys.readouterr().out
+    out = capsys.readouterr().out.lower()
     assert code == 0
-    # the valid entry is still listed (recovered what it could)
-    assert "a" in out
-    # and the corruption is surfaced with a pointer to doctor
-    assert "corrupt" in out
-    assert "doctor" in out
+    assert "trash" in out
+    # points the user at the per-platform recovery path and at history
+    assert "recycle bin" in out
+    assert "history" in out
+
+
+def test_restore_does_not_touch_the_filesystem(tmp_path, monkeypatch) -> None:
+    # It must not call into send2trash or the metadata store at all.
+    def _boom(*args, **kwargs):
+        raise AssertionError("restore must not invoke send2trash")
+
+    monkeypatch.setattr("devklean.deletion.trash.send2trash", _boom)
+
+    assert run_restore(Namespace(), None, None) == 0

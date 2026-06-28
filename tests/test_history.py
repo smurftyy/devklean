@@ -3,23 +3,21 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
-import time
 from io import StringIO
 from pathlib import Path
 
-import pytest
-
 from devklean.deletion.history import HistoryOperation, build_history
-from devklean.output.json import JsonRenderer
-from devklean.output.text import TextRenderer
 from devklean.deletion.metadata import (
     DeletionMetadataItem,
     DeletionMetadataRecord,
     StoredDeletionMetadata,
 )
 from devklean.output.history_payload import build_history_payload
+from devklean.output.json import JsonRenderer
+from devklean.output.text import TextRenderer
 
 
 def _stored(
@@ -141,21 +139,10 @@ def test_build_history_payload_empty() -> None:
     assert payload["summary"]["total_reclaimed_size"] == 0
 
 
-@pytest.fixture
-def utc_timezone(monkeypatch):
-    monkeypatch.setenv("TZ", "UTC")
-    time.tzset()
-    yield
-    monkeypatch.undo()
-    time.tzset()
-
-
 def test_json_renderer_emits_history() -> None:
     stream = StringIO()
     renderer = JsonRenderer(stream=stream)
-    operations = (
-        HistoryOperation("run1", "2026-06-28T14:00:00+00:00", "trash", 3, 400),
-    )
+    operations = (HistoryOperation("run1", "2026-06-28T14:00:00+00:00", "trash", 3, 400),)
 
     renderer.history(operations, invalid_count=0)
 
@@ -165,9 +152,7 @@ def test_json_renderer_emits_history() -> None:
 
 
 def test_text_renderer_history_lists_operations(capsys, utc_timezone) -> None:
-    operations = (
-        HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 3, 400),
-    )
+    operations = (HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 3, 400),)
 
     TextRenderer().history(operations, invalid_count=0)
 
@@ -184,9 +169,7 @@ def test_text_renderer_history_empty_state(capsys) -> None:
 
 
 def test_text_renderer_history_corrupt_note_points_to_doctor(capsys) -> None:
-    operations = (
-        HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 1, 100),
-    )
+    operations = (HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 1, 100),)
 
     TextRenderer().history(operations, invalid_count=2)
 
@@ -219,7 +202,7 @@ def test_history_command_text_output(tmp_path: Path) -> None:
     _write_metadata(deletions, deletion_id="a", run_id="run1", size=100)
     _write_metadata(deletions, deletion_id="b", run_id="run1", size=300)
 
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "history"],
         capture_output=True,
@@ -239,7 +222,7 @@ def test_history_command_json_output(tmp_path: Path) -> None:
     _write_metadata(deletions, deletion_id="a", run_id="run1", size=100)
     _write_metadata(deletions, deletion_id="b", run_id="run1", size=300)
 
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "history", "--json"],
         capture_output=True,
@@ -256,7 +239,7 @@ def test_history_command_json_output(tmp_path: Path) -> None:
 
 
 def test_history_command_empty_store(tmp_path: Path) -> None:
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "history"],
         capture_output=True,

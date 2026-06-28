@@ -2,9 +2,53 @@
 
 from __future__ import annotations
 
+import os
+import shutil
+import time
 from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture
+def utc_timezone(monkeypatch):
+    """Pin the local timezone to UTC for deterministic timestamp formatting.
+
+    ``time.tzset()`` only exists on Unix, so the calls are guarded for Windows.
+    """
+    monkeypatch.setenv("TZ", "UTC")
+    if hasattr(time, "tzset"):
+        time.tzset()
+    yield
+    monkeypatch.undo()
+    if hasattr(time, "tzset"):
+        time.tzset()
+
+
+@pytest.fixture
+def fake_trash(monkeypatch):
+    """Replace ``send2trash`` with a deterministic, OS-independent fake.
+
+    Unit tests must not depend on the real native trash (that platform
+    dependence is exactly what broke CI on macOS/Windows). This records each
+    trashed path and removes it from disk, so ``send2trash``-was-called and
+    "the original no longer exists" assertions both hold on every platform.
+    Returns the list of paths the strategy asked to trash.
+    """
+    trashed: list[str] = []
+
+    def _fake_send2trash(path) -> None:
+        target = Path(os.fspath(path))
+        trashed.append(str(target))
+        if not target.exists():
+            raise OSError(f"File not found: {target}")
+        if target.is_dir() and not target.is_symlink():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+
+    monkeypatch.setattr("devklean.deletion.trash.send2trash", _fake_send2trash)
+    return trashed
 
 
 @pytest.fixture

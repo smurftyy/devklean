@@ -14,5 +14,5 @@ class DeletionStrategy(Protocol):
         self,
         items: Sequence[CleanableItem],
         total_size: int,
-    ) -> DeleteResult:
-        ...
+        dry_run: bool = False,
+    ) -> DeleteResult: ...

@@ -2,20 +2,9 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from devklean.formatting import format_size, format_timestamp, truncate
-
-
-@pytest.fixture
-def utc_timezone(monkeypatch):
-    monkeypatch.setenv("TZ", "UTC")
-    time.tzset()
-    yield
-    monkeypatch.undo()
-    time.tzset()
 
 
 def test_format_timestamp_converts_utc_iso_to_local_minute(utc_timezone) -> None:
@@ -38,6 +27,8 @@ def test_format_timestamp_falls_back_to_raw_value_when_unparseable() -> None:
         (50 * 1024 * 1024, "50.0 MB"),
         (1024 * 1024 * 1024, "1.0 GB"),
         (1024 * 1024 * 1024 * 1024, "1.0 TB"),
+        (5 * 1024**4, "5.0 TB"),
+        (1024**5, "1024.0 TB"),
     ],
 )
 def test_format_size(size_bytes: int, expected: str) -> None:

@@ -1,8 +1,9 @@
-"""Tests for the `devclean doctor` integrity repair command."""
+"""Tests for the `devklean doctor` integrity repair command."""
 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from argparse import Namespace
@@ -44,9 +45,7 @@ def _args(**kwargs) -> Namespace:
 def test_doctor_healthy_store(tmp_path, monkeypatch, capsys) -> None:
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     meta = _meta_dir(tmp_path)
-    trash = tmp_path / "trash" / "node_modules"
-    trash.mkdir(parents=True)
-    _valid(meta, "a", trash_path=str(trash))
+    _valid(meta, "a", trash_path=None)
 
     code = run_doctor(_args(), None, None)
 
@@ -100,42 +99,27 @@ def test_doctor_yes_flag_skips_prompt(tmp_path, monkeypatch, capsys) -> None:
     assert not (meta / "bad.json").exists()
 
 
-def test_doctor_reports_orphaned_but_keeps_them(tmp_path, monkeypatch, capsys) -> None:
+def test_doctor_does_not_flag_records_with_missing_trash(tmp_path, monkeypatch, capsys) -> None:
+    # Orphan detection was removed with the move to the native OS trash; a
+    # record whose trashed item is gone is no longer reported as a problem.
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     meta = _meta_dir(tmp_path)
     _valid(meta, "gone", trash_path=str(tmp_path / "trash" / "missing"))
-    monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
     code = run_doctor(_args(), None, None)
 
     out = capsys.readouterr().out
     assert code == 0
-    # orphaned record is reported...
-    assert "ORPHAN" in out.upper()
-    # ...but never removed by doctor
+    assert "healthy" in out.lower()
+    assert "ORPHAN" not in out.upper()
     assert (meta / "gone.json").exists()
-
-
-def test_doctor_lists_corrupt_and_orphaned_separately(tmp_path, monkeypatch, capsys) -> None:
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
-    meta = _meta_dir(tmp_path)
-    _corrupt(meta, "bad")
-    _valid(meta, "gone", trash_path=str(tmp_path / "trash" / "missing"))
-    monkeypatch.setattr("builtins.input", lambda prompt: "n")
-
-    code = run_doctor(_args(), None, None)
-
-    out = capsys.readouterr().out.upper()
-    assert code == 0
-    assert "CORRUPT" in out
-    assert "ORPHAN" in out
 
 
 def test_doctor_command_end_to_end(tmp_path) -> None:
     meta = _meta_dir(tmp_path)
     _corrupt(meta, "bad")
 
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "doctor", "--yes"],
         capture_output=True,

@@ -1,21 +1,24 @@
 [build-system]
-requires = []
-build-backend = "build_backend"
-backend-path = ["."]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "devklean"
 dynamic = ["version"]
-description = "Clean up common development artifacts to reclaim disk space"
+description = "Clean up common development artifacts (node_modules, .venv, caches) to reclaim disk space"
 readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.8"
-license = { text = "Proprietary" }
-keywords = ["cleanup", "cli", "disk-space", "development"]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "smurftyy", email = "oladapooloyede185@gmail.com" },
+]
+keywords = ["cleanup", "cli", "disk-space", "development", "node_modules", "venv"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
+    "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
-    "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
@@ -28,16 +31,41 @@ classifiers = [
 ]
 dependencies = [
     "tomli>=2.0.0; python_version < '3.11'",
+    "send2trash>=1.8.2",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "ruff>=0.6",
+    "mypy>=1.8",
+    "build>=1.0",
 ]
 
 [project.scripts]
 devklean = "devklean.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/smurftyy/devklean"
+Repository = "https://github.com/smurftyy/devklean"
+Issues = "https://github.com/smurftyy/devklean/issues"
+Changelog = "https://github.com/smurftyy/devklean/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+path = "src/devklean/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/devklean"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -57,3 +85,24 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "B008",  # function call in default arg (intentional in a few places)
+]
+
+[tool.mypy]
+# Type-checking target. The runtime still supports 3.8 (via
+# `from __future__ import annotations`); mypy itself requires >= 3.10 here.
+python_version = "3.10"
+files = ["src/devklean"]
+ignore_missing_imports = true
+warn_unused_ignores = false
+check_untyped_defs = false
+# Pragmatic baseline for a first release; can be tightened over time.

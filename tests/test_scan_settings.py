@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import sys
+
+import pytest
+
 from devklean.config import ScanSettings
 from devklean.config.defaults import DEFAULT_TARGETS
 from devklean.scanner.filters import dir_is_under_ignored_path, path_is_excluded
@@ -15,6 +19,7 @@ def test_scan_settings_defaults_match_builtin_targets() -> None:
     assert settings.ignored_directories == frozenset()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX absolute path literals")
 def test_dir_is_under_ignored_path() -> None:
     ignored = {"/tmp/keep"}
 

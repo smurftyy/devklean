@@ -12,14 +12,6 @@ from devklean.models import CleanableItem, DeleteResult
 
 
 @dataclass(frozen=True)
-class DeletionMetadataTrash:
-    path: str
-
-    def to_dict(self) -> dict[str, object]:
-        return {"path": self.path}
-
-
-@dataclass(frozen=True)
 class DeletionMetadataItem:
     original_path: str
     display_name: str
@@ -41,10 +33,9 @@ class DeletionMetadataRecord:
     timestamp: str
     strategy: str
     item: DeletionMetadataItem
-    trash: DeletionMetadataTrash | None = None
 
     def to_dict(self) -> dict[str, object]:
-        payload = {
+        return {
             "schema_version": self.schema_version,
             "deletion": {
                 "id": self.deletion_id,
@@ -54,15 +45,6 @@ class DeletionMetadataRecord:
             },
             "item": self.item.to_dict(),
         }
-        if self.trash is not None:
-            payload["trash"] = self.trash.to_dict()
-        return payload
-
-    @property
-    def trash_path(self) -> str | None:
-        if self.trash is None:
-            return None
-        return self.trash.path
 
 
 @dataclass(frozen=True)
@@ -95,13 +77,6 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
     if not isinstance(deletion, dict) or not isinstance(item, dict):
         raise ValueError("missing or invalid 'deletion'/'item' section")
 
-    trash_data = data.get("trash")
-    trash = None
-    if isinstance(trash_data, dict):
-        trash_path = trash_data.get("path")
-        if isinstance(trash_path, str) and trash_path:
-            trash = DeletionMetadataTrash(path=trash_path)
-
     deletion_id = deletion.get("id")
     run_id = deletion.get("run_id")
     timestamp = deletion.get("timestamp")
@@ -110,21 +85,22 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
     display_name = item.get("display_name")
     size = item.get("size")
 
-    if not all(
-        [
-            isinstance(deletion_id, str),
-            run_id is None or isinstance(run_id, str),
-            isinstance(timestamp, str),
-            isinstance(strategy, str),
-            isinstance(original_path, str),
-            isinstance(display_name, str),
-            isinstance(size, int),
-        ]
+    schema_version = data.get("schema_version", 1)
+
+    if not (
+        isinstance(deletion_id, str)
+        and (run_id is None or isinstance(run_id, str))
+        and isinstance(timestamp, str)
+        and isinstance(strategy, str)
+        and isinstance(original_path, str)
+        and isinstance(display_name, str)
+        and isinstance(size, int)
+        and isinstance(schema_version, int)
     ):
         raise ValueError("missing or wrong-typed metadata fields")
 
     return DeletionMetadataRecord(
-        schema_version=int(data.get("schema_version", 1)),
+        schema_version=schema_version,
         deletion_id=deletion_id,
         run_id=run_id,
         timestamp=timestamp,
@@ -134,7 +110,6 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
             display_name=display_name,
             size=size,
         ),
-        trash=trash,
     )
 
 
@@ -195,7 +170,6 @@ class MetadataManager:
 
         self._storage_dir.mkdir(parents=True, exist_ok=True)
 
-        trashed_paths = iter(result.trashed)
         run_id = uuid4().hex
         timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -203,7 +177,6 @@ class MetadataManager:
             if item.path not in deleted_paths:
                 continue
 
-            trashed_path = next(trashed_paths, None)
             record = DeletionMetadataRecord(
                 schema_version=3,
                 deletion_id=uuid4().hex,
@@ -215,8 +188,8 @@ class MetadataManager:
                     display_name=item.display_label,
                     size=item.size,
                 ),
-                trash=DeletionMetadataTrash(path=trashed_path) if trashed_path else None,
             )
-            filename = f"{record.timestamp.replace(':', '').replace('+00:00', 'Z')}_{record.deletion_id}.json"
+            stamp = record.timestamp.replace(":", "").replace("+00:00", "Z")
+            filename = f"{stamp}_{record.deletion_id}.json"
             path = self._storage_dir / filename
             path.write_text(json.dumps(record.to_dict(), indent=2) + "\n", encoding="utf-8")

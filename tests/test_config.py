@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-from devklean.config import ConfigManager, DEFAULT_TARGETS, ScanSettings, merge_targets
+import pytest
+
+from devklean.config import DEFAULT_TARGETS, ConfigManager, ScanSettings, merge_targets
 from devklean.scanner import scan
 
 
@@ -21,6 +24,7 @@ def test_config_manager_uses_defaults_when_missing(tmp_path: Path) -> None:
     assert config.defaults.interactive is False
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX absolute path literals")
 def test_config_manager_merges_user_settings(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text(
@@ -68,6 +72,7 @@ def test_merge_targets() -> None:
     assert "node_modules" in merged
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX absolute path literals")
 def test_scan_settings_from_app_config(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
     config_path.write_text(

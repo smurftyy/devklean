@@ -1,0 +1,56 @@
+name: Release
+
+# Triggered when a version tag is pushed, e.g. `git tag v0.1.0 && git push --tags`.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  # Build the distribution once and reuse it for publishing.
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build twine
+      - name: Build sdist and wheel
+        run: python -m build
+      - name: Validate distribution metadata
+        run: twine check dist/*
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  # Publish to PyPI via Trusted Publishing (OIDC) — no API token stored.
+  # Requires a one-time PyPI setup: add this repo + workflow + the `pypi`
+  # environment as a trusted publisher at https://pypi.org/manage/account/publishing/
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write  # required for Trusted Publishing (OIDC)
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Trusted Publishing needs no credentials. If you prefer an API token
+        # instead, remove the `permissions` block above and uncomment below,
+        # then add PYPI_API_TOKEN under repo Settings → Secrets → Actions:
+        #
+        # with:
+        #   password: ${{ secrets.PYPI_API_TOKEN }}

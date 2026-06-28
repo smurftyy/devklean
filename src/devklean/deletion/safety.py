@@ -91,22 +91,23 @@ class SafetyValidator:
         protected_paths: frozenset[str] | None = None,
     ) -> None:
         self._allow_symlinks = allow_symlinks
-        self._protected = (
-            protected_paths if protected_paths is not None else protected_system_paths()
-        )
+        # Normalize whatever set we hold so injected protected_paths match the
+        # same way the default set does (_normalize is idempotent). Without this
+        # an injected raw path never matches the normalized candidate on Windows,
+        # where _normalize also lower-cases.
+        raw = protected_paths if protected_paths is not None else protected_system_paths()
+        self._protected = frozenset(_normalize(path) for path in raw)
 
     def validate(self, path: str) -> SafetyViolation | None:
-        """Return the first violated rule for ``path``, or None if safe."""
-        if not self._allow_symlinks and os.path.islink(path):
-            return SafetyViolation(
-                rule="symlink",
-                path=path,
-                message=(
-                    f"Refusing to delete '{path}': it is a symbolic link "
-                    f"(use --allow-symlinks to override)."
-                ),
-            )
+        """Return the first violated rule for ``path``, or None if safe.
 
+        Structural location rules (root, home, mount, protected) are checked
+        before the symlink rule, and against both the literal and the resolved
+        path. This matters on macOS, where ``/etc``, ``/var``, and ``/tmp`` are
+        themselves symlinks into ``/private``: such a path must be reported as a
+        protected system directory — and must not be bypassable with
+        ``--allow-symlinks`` — rather than as a plain symbolic link.
+        """
         real = os.path.realpath(path)
 
         if real == os.path.abspath(os.sep) or self._normalized(real) == os.sep:
@@ -131,11 +132,21 @@ class SafetyValidator:
                 message=f"Refusing to delete '{path}': it is a mounted drive root.",
             )
 
-        if self._normalized(real) in self._protected:
+        if self._normalized(path) in self._protected or self._normalized(real) in self._protected:
             return SafetyViolation(
                 rule="protected_system_directory",
                 path=path,
                 message=f"Refusing to delete '{path}': protected system directory.",
+            )
+
+        if not self._allow_symlinks and os.path.islink(path):
+            return SafetyViolation(
+                rule="symlink",
+                path=path,
+                message=(
+                    f"Refusing to delete '{path}': it is a symbolic link "
+                    f"(use --allow-symlinks to override)."
+                ),
             )
 
         return None
