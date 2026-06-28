@@ -1,48 +1,43 @@
 from __future__ import annotations
 
-from devklean.deletion.integrity import IntegrityReport, check_integrity
+from typing import TYPE_CHECKING
+
+from devklean.deletion.integrity import check_integrity
 from devklean.deletion.metadata import MetadataManager
-from devklean.output.console import Console
+
+if TYPE_CHECKING:
+    from devklean.output.text import TextRenderer
 
 
-def _print_report(console: Console, report: IntegrityReport) -> None:
-    console.plain()
-    console.warning(
-        console.paint(f"CORRUPT ({len(report.corrupt)})", "error")
-        + " — unparseable metadata, will be removed on confirmation"
-    )
-    for entry in report.corrupt:
-        console.detail(f"  ✗ {entry.path.name}  — {entry.reason}")
+def run_doctor(args, renderer: TextRenderer, config) -> int:
+    """Inspect the metadata store and remove confirmed-corrupt records.
 
-
-def run_doctor(args, renderer, config) -> int:
-    """Inspect the metadata store and remove confirmed-corrupt records."""
-    console = Console()
-    report = check_integrity(MetadataManager())
+    Text-only by design: the command is interactive (it prompts before
+    deleting), so it is always given a ``TextRenderer`` and never runs in JSON
+    mode.
+    """
+    manager = MetadataManager()
+    report = check_integrity(manager)
 
     if report.healthy:
-        console.success("Metadata store is healthy.")
+        renderer.doctor_healthy()
         return 0
 
-    _print_report(console, report)
+    renderer.doctor_corruption_report(report)
 
     if not getattr(args, "yes", False):
-        count = len(report.corrupt)
-        plural = "s" if count != 1 else ""
-        confirm = input(f"\nRemove {count} corrupt metadata record{plural}? (y/N) ").strip().lower()
+        confirm = input(renderer.doctor_confirm_prompt(len(report.corrupt))).strip().lower()
         if confirm != "y":
-            console.detail("Kept all records. Nothing removed.")
+            renderer.doctor_kept()
             return 0
 
     removed = 0
     for entry in report.corrupt:
         try:
-            entry.path.unlink()
+            manager.remove_record(entry)
             removed += 1
         except OSError as exc:
-            console.error(f"could not remove {entry.path.name}: {exc}")
+            renderer.doctor_remove_error(entry.path.name, str(exc))
 
-    plural = "s" if removed != 1 else ""
-    console.plain()
-    console.success(f"Removed {removed} corrupt metadata record{plural}.")
+    renderer.doctor_removed(removed)
     return 0

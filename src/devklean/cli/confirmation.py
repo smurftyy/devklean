@@ -1,9 +1,9 @@
 """Large-deletion typed confirmation.
 
 This is a *batch-magnitude* gate, deliberately separate from the per-path
-``SafetyValidator`` (Phase 3.5). The validator answers "is this path safe to
-delete?"; this answers "is this batch large enough to demand an explicit, typed
-confirmation?". The two concerns do not share logic.
+``SafetyValidator``. The validator answers "is this path safe to delete?"; this
+answers "is this batch large enough to demand an explicit, typed confirmation?".
+The two concerns do not share logic.
 
 The gate is NOT bypassed by ``default_yes``/``--yes`` — only dry-run skips it —
 because allowing config to defeat the large-deletion guard would defeat its
@@ -15,10 +15,13 @@ from __future__ import annotations
 import sys
 from typing import Callable, TextIO
 
+from devklean.config.models import DEFAULT_CONFIRM_THRESHOLD
 from devklean.formatting import format_size
 from devklean.output.console import Console
 
-DEFAULT_LARGE_THRESHOLD = 1024**3  # 1 GiB
+# Re-export the single source of truth (config.models) under the name the
+# confirmation flow uses.
+DEFAULT_LARGE_THRESHOLD = DEFAULT_CONFIRM_THRESHOLD
 
 _CONFIRM_WORD = "DELETE"
 

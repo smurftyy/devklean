@@ -10,7 +10,7 @@ from devklean.cli.commands.restore import run_restore
 from devklean.cli.commands.scan import run_scan
 from devklean.cli.parser import IMPLEMENTED_COMMANDS, RESERVED_COMMANDS
 from devklean.config.models import AppConfig
-from devklean.deletion import default_deletion_strategy
+from devklean.deletion import SafetyValidator
 from devklean.output.base import Renderer
 
 CommandHandler = Callable[..., int]
@@ -41,5 +41,5 @@ def dispatch(args, renderer: Renderer, config: AppConfig) -> int:
     handler = _COMMANDS[command]
     if command == "clean":
         allow_symlinks = getattr(args, "allow_symlinks", False)
-        return handler(args, renderer, config, default_deletion_strategy(allow_symlinks))
+        return handler(args, renderer, config, SafetyValidator(allow_symlinks=allow_symlinks))
     return handler(args, renderer, config)

@@ -64,7 +64,7 @@ src/devklean/
   cli/          argument parsing, command dispatch, command handlers
   config/       TOML config loading, precedence, validation
   deletion/     strategies (send2trash), safety validator, metadata, integrity
-  output/       renderers (text/json), console/theme/color, progress widgets
+  output/       renderers (text/json), console/theme/color
   scanner/      directory traversal and size computation
   logging_setup.py
 tests/          pytest suite (mirrors the package)

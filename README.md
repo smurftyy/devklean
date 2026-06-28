@@ -23,7 +23,7 @@ pipx install devklean
 pip install devklean
 ```
 
-Requires Python 3.8+. The only runtime dependency is `tomli` (and only on Python < 3.11).
+Requires Python 3.8+. Runtime dependencies are `send2trash` (used for all deletions) and `tomli` (only on Python < 3.11).
 
 ## Quick start
 

@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 
 from devklean.config.defaults import DEFAULT_TARGETS
 
-_DEFAULT_CONFIRM_THRESHOLD = 1024**3  # 1 GiB
+# Single source of truth for the large-deletion confirmation threshold; the
+# CLI/TUI confirmation flow re-exports this as DEFAULT_LARGE_THRESHOLD.
+DEFAULT_CONFIRM_THRESHOLD = 1024**3  # 1 GiB
 
 
 @dataclass(frozen=True)
@@ -14,7 +16,7 @@ class DefaultsConfig:
     path: str = "."
     default_yes: bool = False
     theme: str = "default"
-    confirm_threshold: int = _DEFAULT_CONFIRM_THRESHOLD
+    confirm_threshold: int = DEFAULT_CONFIRM_THRESHOLD
 
 
 @dataclass(frozen=True)
