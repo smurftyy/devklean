@@ -1,23 +1,25 @@
+from __future__ import annotations
+
 import argparse
 import os
 import sys
 
 from devclean.deleter import delete_items
 from devclean.formatting import BOLD, DIM, GREEN, RED, RESET, YELLOW, format_size
-from devclean.scanner import TARGETS, scan
+from devclean.models import CleanableItem
+from devclean.scanner import scan
 from devclean.tui import run_interactive
 
 
-def print_summary(found):
-    total_size = sum(s for _, _, s in found)
+def print_summary(found: list[CleanableItem]) -> int:
+    total_size = sum(item.size for item in found)
 
     print(f"{'TYPE':<18} {'SIZE':>8}  {'PATH'}")
     print(f"{DIM}{'─'*70}{RESET}")
 
-    for path, name, size in sorted(found, key=lambda x: -x[2]):
-        label = TARGETS.get(name, name)
-        color = RED if size > 50 * 1024 * 1024 else YELLOW
-        print(f"{DIM}{label:<18}{RESET} {color}{format_size(size):>8}{RESET}  {DIM}{path}{RESET}")
+    for item in sorted(found, key=lambda x: -x.size):
+        color = RED if item.size > 50 * 1024 * 1024 else YELLOW
+        print(f"{DIM}{item.display_label:<18}{RESET} {color}{format_size(item.size):>8}{RESET}  {DIM}{item.path}{RESET}")
 
     print(f"{DIM}{'─'*70}{RESET}")
     print(f"{'TOTAL':<18} {BOLD}{RED}{format_size(total_size):>8}{RESET}\n")
@@ -25,7 +27,7 @@ def print_summary(found):
     return total_size
 
 
-def run_standard(found, dry_run):
+def run_standard(found: list[CleanableItem], dry_run: bool) -> None:
     total_size = print_summary(found)
 
     if dry_run:
@@ -40,7 +42,7 @@ def run_standard(found, dry_run):
     delete_items(found, total_size)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Scan and remove node_modules/venvs to reclaim disk space."
     )

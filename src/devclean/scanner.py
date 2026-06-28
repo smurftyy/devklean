@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import os
 
 from devclean.formatting import BOLD, CYAN, DIM, RESET
+from devclean.models import CleanableItem
 
 TARGETS = {
     "node_modules": "Node.js",
@@ -14,7 +17,7 @@ TARGETS = {
 }
 
 
-def get_dir_size(path):
+def get_dir_size(path: str) -> int:
     total = 0
     try:
         for dirpath, _, filenames in os.walk(path):
@@ -29,8 +32,8 @@ def get_dir_size(path):
     return total
 
 
-def scan(root):
-    found = []
+def scan(root: str) -> list[CleanableItem]:
+    found: list[CleanableItem] = []
 
     print(f"\n{BOLD}{CYAN}devclean{RESET} {DIM}scanning {root}...{RESET}\n")
 
@@ -38,14 +41,19 @@ def scan(root):
         # Prune already-found targets from further traversal
         dirnames[:] = [
             d for d in dirnames
-            if os.path.join(dirpath, d) not in [f[0] for f in found]
+            if os.path.join(dirpath, d) not in {item.path for item in found}
         ]
 
         for dirname in list(dirnames):
             if dirname in TARGETS:
                 full_path = os.path.join(dirpath, dirname)
                 size = get_dir_size(full_path)
-                found.append((full_path, dirname, size))
+                found.append(CleanableItem(
+                    path=full_path,
+                    name=dirname,
+                    size=size,
+                    display_label=TARGETS.get(dirname, dirname),
+                ))
                 dirnames.remove(dirname)  # don't recurse into it
 
     return found

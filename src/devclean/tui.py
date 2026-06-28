@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import curses
+from typing import List, Optional
 
 from devclean.deleter import delete_items
 from devclean.formatting import DIM, YELLOW, format_size, truncate
-from devclean.scanner import TARGETS
+from devclean.models import CleanableItem
 
 
-def interactive_ui(stdscr, items, dry_run):
+def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optional[List[int]]:
     curses.curs_set(0)
     stdscr.keypad(True)
 
@@ -38,7 +41,7 @@ def interactive_ui(stdscr, items, dry_run):
                     break
                 item = items[i]
                 mark = "x" if selected[i] else " "
-                line = f"[{mark}] {item['label']:<18} {format_size(item['size']):>8} {item['path']}"
+                line = f"[{mark}] {item.display_label:<18} {format_size(item.size):>8} {item.path}"
                 line = truncate(line, width)
                 if i == idx:
                     stdscr.addnstr(list_top + row, 0, line, width, curses.A_REVERSE)
@@ -46,7 +49,7 @@ def interactive_ui(stdscr, items, dry_run):
                     stdscr.addnstr(list_top + row, 0, line, width)
 
         selected_count = sum(1 for s in selected if s)
-        selected_size = sum(items[i]["size"] for i, s in enumerate(selected) if s)
+        selected_size = sum(items[i].size for i, s in enumerate(selected) if s)
         footer = f"Selected: {selected_count}/{len(items)}  Total: {format_size(selected_size)}"
         if dry_run:
             footer += "  [dry-run]"
@@ -74,16 +77,8 @@ def interactive_ui(stdscr, items, dry_run):
             return [i for i, s in enumerate(selected) if s]
 
 
-def run_interactive(found, dry_run):
-    items = [
-        {
-            "path": path,
-            "name": name,
-            "size": size,
-            "label": TARGETS.get(name, name),
-        }
-        for path, name, size in sorted(found, key=lambda x: -x[2])
-    ]
+def run_interactive(found: List[CleanableItem], dry_run: bool) -> None:
+    items = sorted(found, key=lambda x: -x.size)
 
     selected_indices = curses.wrapper(interactive_ui, items, dry_run)
     if selected_indices is None:
@@ -95,11 +90,10 @@ def run_interactive(found, dry_run):
         print(f"\n{DIM}No items selected. Nothing deleted.{RESET}\n")
         return
 
-    total_size = sum(item["size"] for item in selected)
-    selected_paths = [(item["path"], item["name"], item["size"]) for item in selected]
+    total_size = sum(item.size for item in selected)
 
     if dry_run:
         print(f"{YELLOW}[dry-run] {len(selected)} director{'y' if len(selected)==1 else 'ies'} selected, nothing deleted.{RESET}\n")
         return
 
-    delete_items(selected_paths, total_size)
+    delete_items(selected, total_size)

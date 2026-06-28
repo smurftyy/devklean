@@ -8,7 +8,7 @@ DIM = "\033[2m"
 RESET = "\033[0m"
 
 
-def format_size(size_bytes):
+def format_size(size_bytes: float) -> str:
     for unit in ["B", "KB", "MB", "GB"]:
         if size_bytes < 1024:
             return f"{size_bytes:.1f} {unit}"
@@ -16,7 +16,7 @@ def format_size(size_bytes):
     return f"{size_bytes:.1f} TB"
 
 
-def truncate(text, max_len):
+def truncate(text: str, max_len: int) -> str:
     if max_len <= 0:
         return ""
     if len(text) <= max_len:
