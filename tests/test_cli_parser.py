@@ -2,34 +2,34 @@
 
 from __future__ import annotations
 
-from devclean.cli.parser import legacy_command_for_flags, preprocess_argv
+from devklean.cli.parser import legacy_command_for_flags, preprocess_argv
 
 
 def test_preprocess_bare_invocation() -> None:
-    assert preprocess_argv(["devclean"]) == ["devclean", "clean"]
+    assert preprocess_argv(["devklean"]) == ["devklean", "clean"]
 
 
 def test_preprocess_legacy_dry_run() -> None:
-    assert preprocess_argv(["devclean", "--dry-run"]) == ["devclean", "scan"]
-    assert preprocess_argv(["devclean", "--dry-run", "."]) == ["devclean", "scan", "."]
+    assert preprocess_argv(["devklean", "--dry-run"]) == ["devklean", "scan"]
+    assert preprocess_argv(["devklean", "--dry-run", "."]) == ["devklean", "scan", "."]
 
 
 def test_preprocess_legacy_path_first_dry_run() -> None:
-    assert preprocess_argv(["devclean", "/tmp/code", "--dry-run"]) == [
-        "devclean",
+    assert preprocess_argv(["devklean", "/tmp/code", "--dry-run"]) == [
+        "devklean",
         "scan",
         "/tmp/code",
     ]
 
 
 def test_preprocess_legacy_clean_default() -> None:
-    assert preprocess_argv(["devclean", "."]) == ["devclean", "clean", "."]
-    assert preprocess_argv(["devclean", "-i"]) == ["devclean", "clean", "-i"]
+    assert preprocess_argv(["devklean", "."]) == ["devklean", "clean", "."]
+    assert preprocess_argv(["devklean", "-i"]) == ["devklean", "clean", "-i"]
 
 
 def test_preprocess_legacy_interactive_dry_run_stays_clean() -> None:
-    assert preprocess_argv(["devclean", "--dry-run", "-i"]) == [
-        "devclean",
+    assert preprocess_argv(["devklean", "--dry-run", "-i"]) == [
+        "devklean",
         "clean",
         "--dry-run",
         "-i",
@@ -37,17 +37,17 @@ def test_preprocess_legacy_interactive_dry_run_stays_clean() -> None:
 
 
 def test_preprocess_explicit_subcommand_unchanged() -> None:
-    assert preprocess_argv(["devclean", "scan", "."]) == ["devclean", "scan", "."]
-    assert preprocess_argv(["devclean", "clean", "--dry-run"]) == [
-        "devclean",
+    assert preprocess_argv(["devklean", "scan", "."]) == ["devklean", "scan", "."]
+    assert preprocess_argv(["devklean", "clean", "--dry-run"]) == [
+        "devklean",
         "clean",
         "--dry-run",
     ]
 
 
 def test_preprocess_global_options_unchanged() -> None:
-    assert preprocess_argv(["devclean", "--help"]) == ["devclean", "--help"]
-    assert preprocess_argv(["devclean", "--version"]) == ["devclean", "--version"]
+    assert preprocess_argv(["devklean", "--help"]) == ["devklean", "--help"]
+    assert preprocess_argv(["devklean", "--version"]) == ["devklean", "--version"]
 
 
 def test_legacy_command_for_flags() -> None:

@@ -4,7 +4,7 @@ build-backend = "build_backend"
 backend-path = ["."]
 
 [project]
-name = "devclean"
+name = "devklean"
 dynamic = ["version"]
 description = "Clean up common development artifacts to reclaim disk space"
 readme = { file = "README.md", content-type = "text/markdown" }
@@ -37,7 +37,7 @@ dev = [
 ]
 
 [project.scripts]
-devclean = "devclean.cli.main:main"
+devklean = "devklean.cli.main:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -48,7 +48,7 @@ filterwarnings = [
 ]
 
 [tool.coverage.run]
-source = ["devclean"]
+source = ["devklean"]
 branch = true
 omit = [
     "*/tests/*",

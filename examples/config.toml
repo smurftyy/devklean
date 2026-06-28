@@ -1,12 +1,12 @@
-# devclean configuration example
+# devklean configuration example
 #
 # Install at:
-#   Linux/macOS: ~/.config/devclean/config.toml
-#   Windows:     %APPDATA%\devclean\config.toml
-#   XDG:         $XDG_CONFIG_HOME/devclean/config.toml
+#   Linux/macOS: ~/.config/devklean/config.toml
+#   Windows:     %APPDATA%\devklean\config.toml
+#   XDG:         $XDG_CONFIG_HOME/devklean/config.toml
 
 [defaults]
-# Applied to `devclean clean` when flags are not given on the command line.
+# Applied to `devklean clean` when flags are not given on the command line.
 dry_run = false
 interactive = false
 path = "."

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from devclean.config import ScanSettings
-from devclean.config.defaults import DEFAULT_TARGETS
-from devclean.scanner.filters import dir_is_under_ignored_path, path_is_excluded
+from devklean.config import ScanSettings
+from devklean.config.defaults import DEFAULT_TARGETS
+from devklean.scanner.filters import dir_is_under_ignored_path, path_is_excluded
 
 
 def test_scan_settings_defaults_match_builtin_targets() -> None:

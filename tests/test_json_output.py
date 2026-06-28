@@ -6,9 +6,9 @@ import json
 from io import StringIO
 from pathlib import Path
 
-from devclean.models import CleanableItem
-from devclean.output.json import JsonRenderer
-from devclean.output.scan_payload import build_scan_payload, serialize_cleanable_item
+from devklean.models import CleanableItem
+from devklean.output.json import JsonRenderer
+from devklean.output.scan_payload import build_scan_payload, serialize_cleanable_item
 
 
 def test_serialize_cleanable_item() -> None:

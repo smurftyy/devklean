@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/devclean/devclean/schemas/scan-v1.json",
-  "title": "devclean scan output",
-  "description": "Machine-readable output for `devclean scan --json`.",
+  "$id": "https://github.com/devklean/devklean/schemas/scan-v1.json",
+  "title": "devklean scan output",
+  "description": "Machine-readable output for `devklean scan --json`.",
   "oneOf": [
     { "$ref": "#/$defs/scanResult" },
     { "$ref": "#/$defs/scanError" }

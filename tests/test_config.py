@@ -1,11 +1,11 @@
-"""Tests for devclean configuration loading."""
+"""Tests for devklean configuration loading."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from devclean.config import ConfigManager, DEFAULT_TARGETS, ScanSettings, merge_targets
-from devclean.scanner import scan
+from devklean.config import ConfigManager, DEFAULT_TARGETS, ScanSettings, merge_targets
+from devklean.scanner import scan
 
 
 def test_config_manager_uses_defaults_when_missing(tmp_path: Path) -> None:
@@ -105,7 +105,7 @@ def test_apply_defaults_respects_explicit_cli_flags(tmp_path: Path) -> None:
         _config = config
 
     args = Args()
-    manager.apply_defaults(args, ["devclean", "clean", "--dry-run"])
+    manager.apply_defaults(args, ["devklean", "clean", "--dry-run"])
 
     assert args.dry_run is True
     assert args.interactive is True

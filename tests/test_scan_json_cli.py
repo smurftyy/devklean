@@ -1,4 +1,4 @@
-"""Integration tests for `devclean scan --json`."""
+"""Integration tests for `devklean scan --json`."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 def test_scan_json_cli(sample_tree: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "devclean", "scan", "--json", str(sample_tree)],
+        [sys.executable, "-m", "devklean", "scan", "--json", str(sample_tree)],
         capture_output=True,
         text=True,
         check=False,
@@ -27,7 +27,7 @@ def test_scan_json_cli(sample_tree: Path) -> None:
 
 def test_scan_json_empty_tree(empty_tree: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "devclean", "scan", "--json", str(empty_tree)],
+        [sys.executable, "-m", "devklean", "scan", "--json", str(empty_tree)],
         capture_output=True,
         text=True,
         check=False,

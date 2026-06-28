@@ -1,10 +1,10 @@
-"""Tests for devclean.formatting utilities."""
+"""Tests for devklean.formatting utilities."""
 
 from __future__ import annotations
 
 import pytest
 
-from devclean.formatting import format_size, truncate
+from devklean.formatting import format_size, truncate
 
 
 @pytest.mark.parametrize(

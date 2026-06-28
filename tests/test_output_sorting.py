@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from devclean.models import CleanableItem
-from devclean.output.sorting import items_by_size_desc
+from devklean.models import CleanableItem
+from devklean.output.sorting import items_by_size_desc
 
 
 def test_items_by_size_desc() -> None:

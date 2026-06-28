@@ -1,4 +1,4 @@
-"""Minimal PEP 517/660 backend for devclean."""
+"""Minimal PEP 517/660 backend for devklean."""
 
 from __future__ import annotations
 
@@ -17,8 +17,8 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parent
 SRC_DIR = ROOT / "src"
-PACKAGE_DIR = SRC_DIR / "devclean"
-DIST_NAME = "devclean"
+PACKAGE_DIR = SRC_DIR / "devklean"
+DIST_NAME = "devklean"
 SUMMARY = "Clean up common development artifacts to reclaim disk space"
 REQUIRES_PYTHON = ">=3.8"
 LICENSE = "Proprietary"
@@ -39,7 +39,7 @@ CLASSIFIERS = [
 ]
 KEYWORDS = ["cleanup", "cli", "disk-space", "development"]
 DEPENDENCIES = ['tomli>=2.0.0; python_version < "3.11"']
-ENTRY_POINTS = {"console_scripts": {"devclean": "devclean.cli.main:main"}}
+ENTRY_POINTS = {"console_scripts": {"devklean": "devklean.cli.main:main"}}
 PY_TAG = "py3"
 ABI_TAG = "none"
 PLATFORM_TAG = "any"
@@ -123,7 +123,7 @@ def _write_metadata(dist_info_dir: Path, editable: bool = False) -> None:
     (dist_info_dir / "METADATA").write_text(_metadata_text(), encoding="utf-8")
     (dist_info_dir / "WHEEL").write_text(_wheel_text(editable=editable), encoding="utf-8")
     (dist_info_dir / "entry_points.txt").write_text(_entry_points_text(), encoding="utf-8")
-    (dist_info_dir / "top_level.txt").write_text("devclean\n", encoding="utf-8")
+    (dist_info_dir / "top_level.txt").write_text("devklean\n", encoding="utf-8")
 
 
 def _package_files() -> Iterable[Path]:
@@ -166,7 +166,7 @@ def _build_wheel_archive(wheel_directory: str, editable: bool = False) -> str:
             f"{dist_info}/METADATA": _metadata_text().encode("utf-8"),
             f"{dist_info}/WHEEL": _wheel_text(editable=editable).encode("utf-8"),
             f"{dist_info}/entry_points.txt": _entry_points_text().encode("utf-8"),
-            f"{dist_info}/top_level.txt": b"devclean\n",
+            f"{dist_info}/top_level.txt": b"devklean\n",
         }
         for archive_name, data in metadata_files.items():
             archive.writestr(archive_name, data)

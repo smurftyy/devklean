@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for devclean tests."""
+"""Shared pytest fixtures for devklean tests."""
 
 from __future__ import annotations
 

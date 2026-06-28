@@ -1,4 +1,4 @@
-# devclean
+# devklean
 
 Clean up common development artifacts (like `node_modules` and Python virtual environments) to reclaim disk space.
 
@@ -10,9 +10,9 @@ Clean up common development artifacts (like `node_modules` and Python virtual en
 
 ```bash
 git clone <repo-url>
-cd devclean
+cd devklean
 python3 -m pip install .
-devclean --dry-run
+devklean --dry-run
 ```
 
 ## Install
@@ -25,8 +25,8 @@ python3 -m pip install -e .
 ## Usage
 
 ```bash
-devclean [path] [--dry-run] [--interactive]
-python3 -m devclean [path] [--dry-run] [--interactive]
+devklean [path] [--dry-run] [--interactive]
+python3 -m devklean [path] [--dry-run] [--interactive]
 ```
 
 - `path` is optional. Defaults to the current directory.
@@ -36,10 +36,10 @@ python3 -m devclean [path] [--dry-run] [--interactive]
 Example:
 
 ```bash
-devclean ~/code --dry-run
-devclean ~/code
-devclean ~/code --interactive
-devclean ~/code --interactive --dry-run
+devklean ~/code --dry-run
+devklean ~/code
+devklean ~/code --interactive
+devklean ~/code --interactive --dry-run
 ```
 
 ## What It Cleans

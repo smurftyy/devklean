@@ -12,8 +12,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from devclean.config import ScanSettings
-from devclean.scanner import scan
+from devklean.config import ScanSettings
+from devklean.scanner import scan
 
 
 def _build_large_tree(root: Path, *, projects: int = 5, targets_per_project: int = 4) -> None:
