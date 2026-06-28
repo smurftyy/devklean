@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devclean"
+version = "1.1.0"
+description = "Clean up common development artifacts to reclaim disk space"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.scripts]
+devclean = "devclean.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
