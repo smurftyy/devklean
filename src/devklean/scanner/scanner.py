@@ -19,7 +19,7 @@ Complexity (unchanged asymptotics, improved constants):
 - Per node: O(d) directory entries; target/ignore lookups O(1) average.
 - Found-path pruning: O(1) per child via ``found_paths`` set (unchanged).
 
-Phase 4 performance changes (qualitative before/after):
+Sizing and concurrency (qualitative before/after):
 - Sizing: ``get_dir_size`` moved from ``os.walk`` + ``os.path.getsize`` (which
   re-``stat``s every file) to ``os.scandir`` + ``entry.stat`` (cached stat, one
   syscall per entry). Symlinked dirs/files are skipped, so no double-counting.
@@ -42,7 +42,6 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
-from devklean.config.defaults import DEFAULT_TARGETS
 from devklean.config.models import ScanSettings
 from devklean.models import CleanableItem
 from devklean.scanner.filters import (
@@ -87,11 +86,6 @@ def get_dir_size(path: str) -> int:
         except OSError:
             pass
     return total
-
-
-def scan(root: str, settings: ScanSettings | None = None) -> list[CleanableItem]:
-    """Discover cleanable directories under root (backward-compatible wrapper)."""
-    return scan_tree(root, settings).items
 
 
 def scan_tree(root: str, settings: ScanSettings | None = None) -> ScanResult:
@@ -174,7 +168,3 @@ def _compute_sizes_concurrently(paths: list[str]) -> list[int]:
     workers = min(32, (os.cpu_count() or 1) * 5, len(paths))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         return list(executor.map(get_dir_size, paths))
-
-
-# Backward-compatible alias.
-TARGETS = DEFAULT_TARGETS

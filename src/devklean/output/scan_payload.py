@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Sequence
+
 from devklean.formatting import format_size
 from devklean.models import CleanableItem
 from devklean.output.sorting import items_by_size_desc
@@ -7,7 +9,11 @@ from devklean.output.sorting import items_by_size_desc
 SCAN_OUTPUT_VERSION = "1.0"
 
 
-def build_scan_payload(root: str, items: list[CleanableItem]) -> dict:
+def build_scan_payload(
+    root: str,
+    items: list[CleanableItem],
+    permission_errors: Sequence[str] = (),
+) -> dict:
     """Build the canonical scan result structure for renderers and tooling."""
     sorted_items = items_by_size_desc(items)
     total_size = sum(item.size for item in items)
@@ -16,6 +22,7 @@ def build_scan_payload(root: str, items: list[CleanableItem]) -> dict:
         "version": SCAN_OUTPUT_VERSION,
         "root": root,
         "items": [serialize_cleanable_item(item) for item in sorted_items],
+        "permission_errors": list(permission_errors),
         "summary": {
             "count": len(sorted_items),
             "total_size": total_size,
