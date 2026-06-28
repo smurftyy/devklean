@@ -19,17 +19,18 @@ class JsonRenderer:
     def __init__(self, *, stream=None) -> None:
         self._stream = stream if stream is not None else sys.stdout
         self._root = ""
+        self._permission_errors: list[str] = []
 
     def scan_start(self, root: str) -> None:
         self._root = root
 
     def scan_summary(self, items: list[CleanableItem]) -> int:
-        payload = build_scan_payload(self._root, items)
+        payload = build_scan_payload(self._root, items, self._permission_errors)
         self._emit(payload)
         return payload["summary"]["total_size"]
 
     def nothing_to_clean(self) -> None:
-        self._emit(build_scan_payload(self._root, []))
+        self._emit(build_scan_payload(self._root, [], self._permission_errors))
 
     def dry_run_nothing_deleted(self) -> None:
         pass
@@ -58,8 +59,9 @@ class JsonRenderer:
         pass
 
     def permission_warnings(self, paths) -> None:
-        # JSON scan schema is versioned; warnings are surfaced in text mode only.
-        pass
+        # Captured here and emitted in the scan payload so JSON consumers see
+        # the same skipped-path information the text renderer prints.
+        self._permission_errors = list(paths)
 
     def history(
         self,

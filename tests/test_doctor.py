@@ -7,9 +7,12 @@ import os
 import subprocess
 import sys
 from argparse import Namespace
+from io import StringIO
 from pathlib import Path
 
 from devklean.cli.commands.doctor import run_doctor
+from devklean.output.console import Console
+from devklean.output.text import TextRenderer
 
 
 def _meta_dir(tmp_path: Path) -> Path:
@@ -47,11 +50,25 @@ def test_doctor_healthy_store(tmp_path, monkeypatch, capsys) -> None:
     meta = _meta_dir(tmp_path)
     _valid(meta, "a", trash_path=None)
 
-    code = run_doctor(_args(), None, None)
+    code = run_doctor(_args(), TextRenderer(), None)
 
     out = capsys.readouterr().out
     assert code == 0
     assert "healthy" in out.lower()
+
+
+def test_doctor_uses_injected_renderer(tmp_path, monkeypatch) -> None:
+    # C3 regression: doctor must write through the injected renderer's stream,
+    # not construct its own Console pointed at sys.stdout.
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    _valid(_meta_dir(tmp_path), "a", trash_path=None)
+    stream = StringIO()
+    renderer = TextRenderer(console=Console(stream=stream))
+
+    code = run_doctor(_args(), renderer, None)
+
+    assert code == 0
+    assert "healthy" in stream.getvalue().lower()
 
 
 def test_doctor_removes_corrupt_on_confirmation(tmp_path, monkeypatch, capsys) -> None:
@@ -60,7 +77,7 @@ def test_doctor_removes_corrupt_on_confirmation(tmp_path, monkeypatch, capsys) -
     _corrupt(meta, "bad")
     monkeypatch.setattr("builtins.input", lambda prompt: "y")
 
-    code = run_doctor(_args(), None, None)
+    code = run_doctor(_args(), TextRenderer(), None)
 
     out = capsys.readouterr().out
     assert code == 0
@@ -75,7 +92,7 @@ def test_doctor_keeps_corrupt_when_declined(tmp_path, monkeypatch, capsys) -> No
     _corrupt(meta, "bad")
     monkeypatch.setattr("builtins.input", lambda prompt: "n")
 
-    code = run_doctor(_args(), None, None)
+    code = run_doctor(_args(), TextRenderer(), None)
 
     out = capsys.readouterr().out
     assert code == 0
@@ -93,7 +110,7 @@ def test_doctor_yes_flag_skips_prompt(tmp_path, monkeypatch, capsys) -> None:
 
     monkeypatch.setattr("builtins.input", fail_input)
 
-    code = run_doctor(_args(yes=True), None, None)
+    code = run_doctor(_args(yes=True), TextRenderer(), None)
 
     assert code == 0
     assert not (meta / "bad.json").exists()
@@ -106,7 +123,7 @@ def test_doctor_does_not_flag_records_with_missing_trash(tmp_path, monkeypatch, 
     meta = _meta_dir(tmp_path)
     _valid(meta, "gone", trash_path=str(tmp_path / "trash" / "missing"))
 
-    code = run_doctor(_args(), None, None)
+    code = run_doctor(_args(), TextRenderer(), None)
 
     out = capsys.readouterr().out
     assert code == 0

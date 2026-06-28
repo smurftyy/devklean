@@ -5,7 +5,7 @@ from devklean.cli.confirmation import (
     confirm_large_deletion,
     exceeds_threshold,
 )
-from devklean.deletion import DeletionStrategy, delete_items
+from devklean.deletion import SafetyValidator, delete_items
 from devklean.formatting import format_size, truncate
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
@@ -92,7 +92,7 @@ def run_interactive(
     renderer: Renderer,
     found: list[CleanableItem],
     dry_run: bool,
-    deletion_strategy: DeletionStrategy | None = None,
+    validator: SafetyValidator | None = None,
     *,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
@@ -122,5 +122,5 @@ def run_interactive(
             renderer.aborted()
             return
 
-    result = delete_items(selected, total_size, deletion_strategy)
+    result = delete_items(selected, total_size, validator=validator)
     renderer.deletion_result(result)

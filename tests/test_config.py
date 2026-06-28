@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from devklean.config import DEFAULT_TARGETS, ConfigManager, ScanSettings, merge_targets
-from devklean.scanner import scan
+from devklean.scanner import scan_tree
 
 
 def test_config_manager_uses_defaults_when_missing(tmp_path: Path) -> None:
@@ -126,7 +126,7 @@ def test_scan_honors_excluded_and_custom_targets(tmp_path: Path) -> None:
     settings = ScanSettings(
         targets=merge_targets(exclude=["env"], custom={".turbo": "Turborepo cache"}),
     )
-    found = scan(str(root), settings=settings)
+    found = scan_tree(str(root), settings=settings).items
     names = {item.name for item in found}
 
     assert "env" not in names
@@ -149,7 +149,7 @@ def test_scan_honors_excluded_paths(tmp_path: Path) -> None:
         targets=dict(DEFAULT_TARGETS),
         ignored_paths=frozenset([str(preserved)]),
     )
-    found = scan(str(root), settings=settings)
+    found = scan_tree(str(root), settings=settings).items
     paths = {item.path for item in found}
 
     assert str(preserved) not in paths
@@ -168,7 +168,7 @@ def test_scan_honors_ignored_directories(tmp_path: Path) -> None:
         targets={**DEFAULT_TARGETS, "vendor": "Vendor directory"},
         ignored_directories=frozenset(["vendor"]),
     )
-    found = scan(str(root), settings=settings)
+    found = scan_tree(str(root), settings=settings).items
     names = {item.name for item in found}
 
     assert "vendor" not in names
@@ -195,7 +195,7 @@ exclude = ["env"]
     )
 
     config = ConfigManager(config_path=config_path).load()
-    found = scan(str(root), settings=config.scan_settings)
+    found = scan_tree(str(root), settings=config.scan_settings).items
     names = {item.name for item in found}
 
     assert "env" not in names

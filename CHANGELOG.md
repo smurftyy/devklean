@@ -52,8 +52,7 @@ First public pre-release.
 - **Logging** — structured, rotating file logs at
   `~/.cache/devklean/logs/latest.log`, separate from terminal output.
 - **UX** — consistent `✓`/`✗`/`⚠` messaging, color that respects `NO_COLOR`,
-  non-tty output, and a `theme` setting; progress spinners/bars; polished
-  interactive mode.
+  non-tty output, and a `theme` setting; polished interactive mode.
 - **Performance** — `os.scandir`-based size computation and concurrent
   per-target sizing.
 - **Packaging** — distributable via `pip`/`pipx`; MIT licensed.

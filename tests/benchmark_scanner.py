@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 
 from devklean.config import ScanSettings
-from devklean.scanner import scan
+from devklean.scanner import scan_tree
 
 
 def _build_large_tree(root: Path, *, projects: int = 5, targets_per_project: int = 4) -> None:
@@ -37,7 +37,7 @@ def test_benchmark_scan_large_tree(tmp_path: Path) -> None:
 
     settings = ScanSettings.defaults()
     start = time.perf_counter()
-    found = scan(str(tree), settings=settings)
+    found = scan_tree(str(tree), settings=settings).items
     elapsed = time.perf_counter() - start
 
     assert len(found) == 32

@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 
 from devklean.cli.dispatcher import dispatch
-from devklean.cli.parser import build_parser, preprocess_argv
+from devklean.cli.parser import build_parser, resolve_bare_invocation
 from devklean.config import ConfigManager
 from devklean.logging_setup import configure_logging, log_invocation
 from devklean.output import JsonRenderer, TextRenderer
@@ -31,7 +31,7 @@ def main() -> None:
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     raw_argv = list(sys.argv)
-    argv = preprocess_argv(raw_argv)
+    argv = resolve_bare_invocation(raw_argv)
 
     configure_logging()
 

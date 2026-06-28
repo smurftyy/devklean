@@ -9,7 +9,7 @@ from devklean.cli.confirmation import (
     exceeds_threshold,
 )
 from devklean.config.models import AppConfig
-from devklean.deletion import DeletionStrategy, delete_items
+from devklean.deletion import SafetyValidator, delete_items
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
 
@@ -37,7 +37,7 @@ def run_standard(
     renderer: Renderer,
     found: list[CleanableItem],
     dry_run: bool,
-    deletion_strategy: DeletionStrategy | None = None,
+    validator: SafetyValidator | None = None,
     *,
     default_yes: bool = False,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
@@ -52,7 +52,7 @@ def run_standard(
         renderer.aborted()
         return
 
-    result = delete_items(found, total_size, deletion_strategy)
+    result = delete_items(found, total_size, validator=validator)
     renderer.deletion_result(result)
 
 
@@ -60,7 +60,7 @@ def run_clean(
     args,
     renderer: Renderer,
     config: AppConfig,
-    deletion_strategy: DeletionStrategy | None = None,
+    validator: SafetyValidator | None = None,
 ) -> int:
     """Scan and optionally delete cleanable directories."""
     exit_code, found = scan_directory(args, renderer, config)
@@ -90,7 +90,7 @@ def run_clean(
             renderer,
             found,
             args.dry_run,
-            deletion_strategy,
+            validator,
             confirm_threshold=confirm_threshold,
         )
     else:
@@ -98,7 +98,7 @@ def run_clean(
             renderer,
             found,
             args.dry_run,
-            deletion_strategy,
+            validator,
             default_yes=default_yes,
             confirm_threshold=confirm_threshold,
         )

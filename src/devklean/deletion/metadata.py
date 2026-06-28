@@ -71,7 +71,7 @@ class MetadataLoadResult:
         return len(self.corrupt)
 
 
-def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataRecord:
+def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
     deletion = data.get("deletion")
     item = data.get("item")
     if not isinstance(deletion, dict) or not isinstance(item, dict):
@@ -85,6 +85,8 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
     display_name = item.get("display_name")
     size = item.get("size")
 
+    # Records predating the schema_version field are treated as v1. Any integer
+    # version is accepted as-is; there are no migrations yet.
     schema_version = data.get("schema_version", 1)
 
     if not (
@@ -139,7 +141,7 @@ class MetadataManager:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 if not isinstance(data, dict):
                     raise ValueError("metadata file is not a JSON object")
-                record = _parse_record_path(path, data)
+                record = _parse_record(data)
             except json.JSONDecodeError:
                 corrupt.append(CorruptMetadata(path=path, reason="malformed JSON"))
                 continue
@@ -155,8 +157,9 @@ class MetadataManager:
         records.sort(key=_metadata_sort_key, reverse=True)
         return MetadataLoadResult(records=tuple(records), corrupt=tuple(corrupt))
 
-    def remove_record(self, stored: StoredDeletionMetadata) -> None:
-        stored.path.unlink(missing_ok=True)
+    def remove_record(self, entry: StoredDeletionMetadata | CorruptMetadata) -> None:
+        """Delete a single metadata file from the store (valid or corrupt)."""
+        entry.path.unlink(missing_ok=True)
 
     def record_successes(
         self,

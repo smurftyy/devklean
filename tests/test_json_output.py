@@ -78,6 +78,24 @@ def test_json_renderer_emits_empty_scan() -> None:
     assert payload["summary"]["count"] == 0
 
 
+def test_build_scan_payload_includes_permission_errors() -> None:
+    payload = build_scan_payload("/tmp", [], permission_errors=["/tmp/locked"])
+
+    assert payload["permission_errors"] == ["/tmp/locked"]
+
+
+def test_json_renderer_emits_permission_errors_in_scan_payload() -> None:
+    stream = StringIO()
+    renderer = JsonRenderer(stream=stream)
+
+    renderer.scan_start("/tmp")
+    renderer.permission_warnings(["/tmp/locked"])
+    renderer.nothing_to_clean()
+
+    payload = json.loads(stream.getvalue())
+    assert payload["permission_errors"] == ["/tmp/locked"]
+
+
 def test_json_renderer_emits_invalid_directory_error() -> None:
     stream = StringIO()
     renderer = JsonRenderer(stream=stream)

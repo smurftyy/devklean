@@ -41,10 +41,6 @@ _THEMES = {
 }
 
 
-def theme_names() -> tuple[str, ...]:
-    return tuple(_THEMES)
-
-
 def get_theme(name: str) -> Theme:
     """Return the named theme, falling back to 'default' for unknown names."""
     return _THEMES.get(name, _THEMES["default"])

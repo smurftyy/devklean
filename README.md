@@ -23,7 +23,7 @@ pipx install devklean
 pip install devklean
 ```
 
-Requires Python 3.8+. The only runtime dependency is `tomli` (and only on Python < 3.11).
+Requires Python 3.8+. Runtime dependencies are `send2trash` (used for all deletions) and `tomli` (only on Python < 3.11).
 
 ## Quick start
 
@@ -48,6 +48,8 @@ devklean clean --dry-run
 | `devklean history` | Show previous cleanup operations (timestamp, size, strategy, item count). |
 | `devklean doctor` | Inspect and repair the deletion metadata store. |
 | `devklean --version` | Print the version. |
+
+**Default command:** running `devklean` with no subcommand defaults to `clean` — so `devklean` is `devklean clean`, and `devklean ~/code` is `devklean clean ~/code`. As a convenience, a bare `devklean --dry-run` (without `-i`) is treated as a `scan` preview.
 
 ### `scan`
 

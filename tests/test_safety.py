@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from devklean.deletion import delete_items
+from devklean.deletion.metadata import MetadataManager
 from devklean.deletion.safety import SafetyValidator, SafetyViolation
-from devklean.deletion.service import default_deletion_strategy
-from devklean.deletion.trash import TrashStrategy
 from devklean.models import CleanableItem
 
 
@@ -164,7 +164,7 @@ def test_partition_splits_safe_and_blocked(tmp_path: Path) -> None:
     assert violation.rule == "filesystem_root"
 
 
-def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path, fake_trash) -> None:
+def test_delete_items_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path, fake_trash) -> None:
     safe_dir = tmp_path / "proj" / "node_modules"
     safe_dir.mkdir(parents=True)
     (safe_dir / "package.json").write_text("{}")
@@ -172,7 +172,11 @@ def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path, 
     safe = _item(str(safe_dir), size=100)
     unsafe = _item("/", size=999)
 
-    result = TrashStrategy().delete([unsafe, safe], total_size=1099)
+    result = delete_items(
+        [unsafe, safe],
+        1099,
+        metadata_manager=MetadataManager(storage_dir=tmp_path / "meta"),
+    )
 
     assert result.deleted == (str(safe_dir),)
     assert len(result.failed) == 1
@@ -184,7 +188,7 @@ def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path, 
     assert fake_trash == [str(safe_dir)]  # only the safe item was trashed
 
 
-def test_trash_strategy_uses_injected_validator(tmp_path: Path, fake_trash) -> None:
+def test_delete_items_uses_injected_validator(tmp_path: Path, fake_trash) -> None:
     link_target = tmp_path / "real"
     link_target.mkdir()
     link = tmp_path / "proj" / "node_modules"
@@ -193,37 +197,45 @@ def test_trash_strategy_uses_injected_validator(tmp_path: Path, fake_trash) -> N
 
     item = _item(str(link), size=50)
 
-    blocked = TrashStrategy().delete([item], total_size=50)
+    blocked = delete_items([item], 50)
     assert blocked.deleted == ()
     assert blocked.failed[0].error.count("symbolic link") == 1
 
-    allowed = TrashStrategy(
+    allowed = delete_items(
+        [item],
+        50,
         validator=SafetyValidator(allow_symlinks=True),
-    ).delete([item], total_size=50)
+        metadata_manager=MetadataManager(storage_dir=tmp_path / "meta"),
+    )
     assert allowed.deleted == (str(link),)
 
 
-def test_default_deletion_strategy_blocks_symlinks_by_default(tmp_path: Path) -> None:
+def test_delete_items_blocks_symlinks_by_default(tmp_path: Path) -> None:
     real = tmp_path / "real"
     real.mkdir()
     link = tmp_path / "node_modules"
     link.symlink_to(real)
     item = _item(str(link))
 
-    result = default_deletion_strategy().delete([item], total_size=100)
+    result = delete_items([item], 100)
 
     assert result.deleted == ()
     assert result.failed[0].error.count("symbolic link") == 1
 
 
-def test_default_deletion_strategy_honors_allow_symlinks(tmp_path: Path, fake_trash) -> None:
+def test_delete_items_honors_allow_symlinks(tmp_path: Path, fake_trash) -> None:
     real = tmp_path / "real"
     real.mkdir()
     link = tmp_path / "node_modules"
     link.symlink_to(real)
     item = _item(str(link))
 
-    result = default_deletion_strategy(allow_symlinks=True).delete([item], total_size=100)
+    result = delete_items(
+        [item],
+        100,
+        validator=SafetyValidator(allow_symlinks=True),
+        metadata_manager=MetadataManager(storage_dir=tmp_path / "meta"),
+    )
 
     assert result.deleted == (str(link),)
     assert fake_trash == [str(link)]
