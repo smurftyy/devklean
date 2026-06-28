@@ -20,6 +20,16 @@ def select_renderer(args, config=None):
 
 
 def main() -> None:
+    # Force UTF-8 on the console before anything writes output. Windows' default
+    # console codepage can't encode the Unicode symbols (⚠/✓/✗) the renderers
+    # emit, so a stock cmd.exe/PowerShell session would crash with
+    # UnicodeEncodeError. errors="replace" degrades any future unencodable
+    # character to a placeholder rather than crashing.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
     raw_argv = list(sys.argv)
     argv = preprocess_argv(raw_argv)
 
