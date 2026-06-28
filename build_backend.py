@@ -39,6 +39,12 @@ CLASSIFIERS = [
 ]
 KEYWORDS = ["cleanup", "cli", "disk-space", "development"]
 DEPENDENCIES = ['tomli>=2.0.0; python_version < "3.11"']
+OPTIONAL_DEPENDENCIES = {
+    "dev": [
+        "pytest>=7.0",
+        "pytest-cov>=4.0",
+    ],
+}
 ENTRY_POINTS = {"console_scripts": {"devklean": "devklean.cli.main:main"}}
 PY_TAG = "py3"
 ABI_TAG = "none"
@@ -88,6 +94,11 @@ def _metadata_text() -> str:
     lines.extend(f"Classifier: {classifier}" for classifier in CLASSIFIERS)
     lines.append(f"Keywords: {', '.join(KEYWORDS)}")
     lines.extend(f"Requires-Dist: {requirement}" for requirement in DEPENDENCIES)
+    for extra, requirements in OPTIONAL_DEPENDENCIES.items():
+        lines.append(f"Provides-Extra: {extra}")
+        lines.extend(
+            f'Requires-Dist: {requirement}; extra == "{extra}"' for requirement in requirements
+        )
     lines.append("")
     return "\n".join(lines)
 
