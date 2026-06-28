@@ -1,5 +1,7 @@
 """Built-in default target definitions."""
 
+from __future__ import annotations
+
 DEFAULT_TARGETS: dict[str, str] = {
     "node_modules": "Node.js",
     "venv": "Python venv",
