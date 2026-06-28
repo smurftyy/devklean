@@ -20,7 +20,7 @@ def run_standard(
         renderer.dry_run_nothing_deleted()
         return
 
-    confirm = input(renderer.confirm_prompt(len(found))).strip().lower()
+    confirm = input(renderer.confirm_prompt(len(found), total_size)).strip().lower()
     if confirm != "y":
         renderer.aborted()
         return

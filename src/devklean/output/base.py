@@ -33,7 +33,7 @@ class Renderer(Protocol):
     def invalid_directory(self, path: str) -> None:
         ...
 
-    def confirm_prompt(self, count: int) -> str:
+    def confirm_prompt(self, count: int, total_size: int = 0) -> str:
         ...
 
     def deletion_result(self, result: DeleteResult) -> None:

@@ -22,9 +22,14 @@ def delete_items(
     total_size: int,
     strategy: DeletionStrategy | None = None,
     metadata_manager: MetadataManager | None = None,
+    dry_run: bool = False,
 ) -> DeleteResult:
     backend = strategy or default_deletion_strategy()
-    result = backend.delete(items, total_size)
+    result = backend.delete(items, total_size, dry_run=dry_run)
+
+    if dry_run:
+        # No deletion happened, so nothing is recorded.
+        return result
 
     manager = metadata_manager or default_metadata_manager()
     manager.record_successes(items, result, _strategy_name(backend))

@@ -23,6 +23,7 @@ class BaseDeletionStrategy:
         self,
         items: Sequence[CleanableItem],
         total_size: int,
+        dry_run: bool = False,
     ) -> DeleteResult:
         safe, blocked = self._validator.partition(items)
 
@@ -31,10 +32,19 @@ class BaseDeletionStrategy:
             for item, violation in blocked
         )
 
+        safe_total = sum(item.size for item in safe)
+
+        if dry_run:
+            # Structural guard: under dry-run no strategy performs any I/O.
+            return DeleteResult(
+                deleted=tuple(item.path for item in safe),
+                failed=blocked_failures,
+                total_size=safe_total,
+            )
+
         if not safe:
             return DeleteResult(deleted=(), failed=blocked_failures, total_size=0)
 
-        safe_total = sum(item.size for item in safe)
         result = self._delete_safe(safe, safe_total)
 
         return DeleteResult(

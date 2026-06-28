@@ -30,7 +30,11 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
         footer_y = height - 1
 
         if len(items) == 0:
-            stdscr.addnstr(list_top, 0, "No matching directories found.", width)
+            stdscr.addnstr(
+                list_top, 0,
+                "No matching directories found — press Q to exit.",
+                width,
+            )
         else:
             if idx < top:
                 top = idx
@@ -54,7 +58,7 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
         selected_size = sum(items[i].size for i, s in enumerate(selected) if s)
         footer = f"Selected: {selected_count}/{len(items)}  Total: {format_size(selected_size)}"
         if dry_run:
-            footer += "  [dry-run]"
+            footer += "  [dry-run: would delete, nothing removed]"
         stdscr.addnstr(footer_y, 0, truncate(footer, width), width)
 
         stdscr.refresh()

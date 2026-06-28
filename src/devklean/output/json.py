@@ -49,7 +49,7 @@ class JsonRenderer:
             f"'{path}' is not a directory.",
         ))
 
-    def confirm_prompt(self, count: int) -> str:
+    def confirm_prompt(self, count: int, total_size: int = 0) -> str:
         raise NotImplementedError("confirm_prompt is not supported in JSON mode")
 
     def deletion_result(self, result: DeleteResult) -> None:

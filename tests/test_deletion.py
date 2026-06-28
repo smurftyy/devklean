@@ -74,7 +74,7 @@ class _RecordingRenderer:
     def invalid_directory(self, path: str) -> None:
         raise AssertionError("invalid_directory should not be called")
 
-    def confirm_prompt(self, count: int) -> str:
+    def confirm_prompt(self, count: int, total_size: int = 0) -> str:
         self.prompt_count = count
         return "delete?"
 
@@ -87,7 +87,7 @@ class _RecordingStrategy:
         self.called = False
         self.name = "recording"
 
-    def delete(self, items, total_size: int) -> DeleteResult:
+    def delete(self, items, total_size: int, dry_run: bool = False) -> DeleteResult:
         self.called = True
         return DeleteResult(
             deleted=tuple(item.path for item in items),
@@ -142,7 +142,7 @@ def test_delete_items_records_only_successes(tmp_path: Path) -> None:
     class _PartialStrategy:
         name = "trash"
 
-        def delete(self, items, total_size: int) -> DeleteResult:
+        def delete(self, items, total_size: int, dry_run: bool = False) -> DeleteResult:
             return DeleteResult(
                 deleted=("/tmp/a",),
                 failed=(),

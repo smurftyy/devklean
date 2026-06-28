@@ -27,6 +27,7 @@ same sizes reported, same traversal boundaries (no recursion into matched target
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass, field
 
 from devklean.config.defaults import DEFAULT_TARGETS
 from devklean.config.models import ScanSettings
@@ -36,6 +37,14 @@ from devklean.scanner.filters import (
     normalize_paths,
     path_is_excluded,
 )
+
+
+@dataclass(frozen=True)
+class ScanResult:
+    """Discovered cleanable items plus paths skipped due to permission errors."""
+
+    items: list[CleanableItem]
+    permission_errors: list[str] = field(default_factory=list)
 
 
 def get_dir_size(path: str) -> int:
