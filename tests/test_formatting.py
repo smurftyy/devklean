@@ -1,10 +1,29 @@
-"""Tests for devclean.formatting utilities."""
+"""Tests for devklean.formatting utilities."""
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
-from devclean.formatting import format_size, truncate
+from devklean.formatting import format_size, format_timestamp, truncate
+
+
+@pytest.fixture
+def utc_timezone(monkeypatch):
+    monkeypatch.setenv("TZ", "UTC")
+    time.tzset()
+    yield
+    monkeypatch.undo()
+    time.tzset()
+
+
+def test_format_timestamp_converts_utc_iso_to_local_minute(utc_timezone) -> None:
+    assert format_timestamp("2026-06-28T14:02:11+00:00") == "2026-06-28 14:02"
+
+
+def test_format_timestamp_falls_back_to_raw_value_when_unparseable() -> None:
+    assert format_timestamp("not-a-timestamp") == "not-a-timestamp"
 
 
 @pytest.mark.parametrize(

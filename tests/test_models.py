@@ -1,4 +1,4 @@
-"""Tests for devclean.models."""
+"""Tests for devklean.models."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import dataclasses
 
 import pytest
 
-from devclean.models import CleanableItem, DeleteFailure, DeleteResult
+from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
 def test_cleanable_item_fields() -> None:

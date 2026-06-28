@@ -1,11 +1,11 @@
-"""Tests for devclean.scanner."""
+"""Tests for devklean.scanner."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from devclean.models import CleanableItem
-from devclean.scanner import TARGETS, get_dir_size, scan
+from devklean.models import CleanableItem
+from devklean.scanner import TARGETS, get_dir_size, scan
 
 
 def test_scan_empty_tree(empty_tree: Path) -> None:
