@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devclean"
+version = "1.1.0"
+description = "Clean up common development artifacts to reclaim disk space"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.scripts]
+devclean = "devclean.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+filterwarnings = [
+    "error",
+]
+
+[tool.coverage.run]
+source = ["devclean"]
+branch = true
+omit = [
+    "*/tests/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
