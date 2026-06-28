@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from devklean.cli.commands.clean import run_standard
+from devklean.deletion.metadata import MetadataManager
+from devklean.deletion.service import delete_items
 from devklean.deletion.trash import TrashStrategy
-from devklean.models import CleanableItem, DeleteResult
+from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
 def test_trash_strategy_moves_directory_to_trash(
@@ -82,6 +85,7 @@ class _RecordingRenderer:
 class _RecordingStrategy:
     def __init__(self) -> None:
         self.called = False
+        self.name = "recording"
 
     def delete(self, items, total_size: int) -> DeleteResult:
         self.called = True
@@ -125,3 +129,55 @@ def test_run_standard_uses_injected_backend(monkeypatch) -> None:
     assert strategy.called is True
     assert renderer.result is not None
     assert renderer.result.deleted == ("/tmp/node_modules",)
+
+
+def test_delete_items_records_only_successes(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "metadata"
+    manager = MetadataManager(storage_dir=storage_dir)
+    items = [
+        CleanableItem("/tmp/a", "a", 10, "A"),
+        CleanableItem("/tmp/b", "b", 20, "B"),
+    ]
+
+    class _PartialStrategy:
+        name = "trash"
+
+        def delete(self, items, total_size: int) -> DeleteResult:
+            return DeleteResult(
+                deleted=("/tmp/a",),
+                failed=(),
+                total_size=total_size,
+            )
+
+    result = delete_items(items, 30, _PartialStrategy(), manager)
+
+    records = sorted(storage_dir.glob("*.json"))
+    assert len(records) == 1
+    payload = json.loads(records[0].read_text(encoding="utf-8"))
+
+    assert result.deleted == ("/tmp/a",)
+    assert payload["schema_version"] == 1
+    assert payload["deletion"]["strategy"] == "trash"
+    assert payload["item"]["original_path"] == "/tmp/a"
+    assert payload["item"]["display_name"] == "A"
+    assert payload["item"]["size"] == 10
+
+
+def test_metadata_manager_skips_failed_deletions(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "metadata"
+    manager = MetadataManager(storage_dir=storage_dir)
+    items = [
+        CleanableItem("/tmp/a", "a", 10, "A"),
+        CleanableItem("/tmp/b", "b", 20, "B"),
+    ]
+    result = DeleteResult(
+        deleted=("/tmp/a",),
+        failed=(DeleteFailure(path="/tmp/b", error="permission denied"),),
+        total_size=30,
+    )
+
+    manager.record_successes(items, result, "trash")
+
+    records = sorted(storage_dir.glob("*.json"))
+    assert len(records) == 1
+    assert json.loads(records[0].read_text(encoding="utf-8"))["item"]["original_path"] == "/tmp/a"

@@ -16,6 +16,8 @@ from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 class TrashStrategy(DeletionStrategy):
     """Move deleted items to the operating system trash when possible."""
 
+    name = "trash"
+
     def __init__(self, trash_root: Path | None = None) -> None:
         self._trash_root = trash_root
 
