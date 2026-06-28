@@ -11,13 +11,22 @@ Clean up common development artifacts (like `node_modules` and Python virtual en
 ```bash
 git clone <repo-url>
 cd devclean
-python3 devclean.py --dry-run
+python3 -m pip install .
+devclean --dry-run
+```
+
+## Install
+
+```bash
+python3 -m pip install .
+python3 -m pip install -e .
 ```
 
 ## Usage
 
 ```bash
-python3 devclean.py [path] [--dry-run] [--interactive]
+devclean [path] [--dry-run] [--interactive]
+python3 -m devclean [path] [--dry-run] [--interactive]
 ```
 
 - `path` is optional. Defaults to the current directory.
@@ -27,10 +36,10 @@ python3 devclean.py [path] [--dry-run] [--interactive]
 Example:
 
 ```bash
-python3 devclean.py ~/code --dry-run
-python3 devclean.py ~/code
-python3 devclean.py ~/code --interactive
-python3 devclean.py ~/code --interactive --dry-run
+devclean ~/code --dry-run
+devclean ~/code
+devclean ~/code --interactive
+devclean ~/code --interactive --dry-run
 ```
 
 ## What It Cleans

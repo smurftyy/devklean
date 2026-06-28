@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 
+from devclean._version import __version__
+
 COMMAND_NAMES = frozenset({"scan", "clean", "stats", "restore", "config", "plugins"})
 IMPLEMENTED_COMMANDS = frozenset({"scan", "clean"})
 RESERVED_COMMANDS = frozenset({"stats", "restore", "config", "plugins"})
@@ -12,7 +14,7 @@ def _add_global_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--version",
         action="version",
-        version="devclean v1.1.0",
+        version=f"devclean v{__version__}",
     )
 
 
