@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from devclean.formatting import BOLD, CYAN, DIM, GREEN, RED, RESET, YELLOW, format_size
 from devclean.models import CleanableItem, DeleteResult
+from devclean.output.sorting import items_by_size_desc
 
 
 class TextRenderer:
@@ -16,7 +17,7 @@ class TextRenderer:
         print(f"{'TYPE':<18} {'SIZE':>8}  {'PATH'}")
         print(f"{DIM}{'─'*70}{RESET}")
 
-        for item in sorted(items, key=lambda x: -x.size):
+        for item in items_by_size_desc(items):
             color = RED if item.size > 50 * 1024 * 1024 else YELLOW
             print(
                 f"{DIM}{item.display_label:<18}{RESET} "

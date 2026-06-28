@@ -7,6 +7,7 @@ from devclean.deleter import delete_items
 from devclean.formatting import format_size, truncate
 from devclean.models import CleanableItem
 from devclean.output.base import Renderer
+from devclean.output.sorting import items_by_size_desc
 
 
 def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optional[List[int]]:
@@ -79,7 +80,7 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
 
 
 def run_interactive(renderer: Renderer, found: List[CleanableItem], dry_run: bool) -> None:
-    items = sorted(found, key=lambda x: -x.size)
+    items = items_by_size_desc(found)
 
     selected_indices = curses.wrapper(interactive_ui, items, dry_run)
     if selected_indices is None:

@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from devclean.formatting import format_size
 from devclean.models import CleanableItem
+from devclean.output.sorting import items_by_size_desc
 
 SCAN_OUTPUT_VERSION = "1.0"
 
 
 def build_scan_payload(root: str, items: list[CleanableItem]) -> dict:
     """Build the canonical scan result structure for renderers and tooling."""
-    sorted_items = sorted(items, key=lambda item: -item.size)
-    total_size = sum(item.size for item in sorted_items)
+    sorted_items = items_by_size_desc(items)
+    total_size = sum(item.size for item in items)
 
     return {
         "version": SCAN_OUTPUT_VERSION,
