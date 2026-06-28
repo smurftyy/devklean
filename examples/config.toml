@@ -1,0 +1,27 @@
+# devclean configuration example
+#
+# Install at:
+#   Linux/macOS: ~/.config/devclean/config.toml
+#   Windows:     %APPDATA%\devclean\config.toml
+#   XDG:         $XDG_CONFIG_HOME/devclean/config.toml
+
+[defaults]
+# Applied to `devclean clean` when flags are not given on the command line.
+dry_run = false
+interactive = false
+path = "."
+
+[targets]
+# Built-in targets to exclude from scanning.
+exclude = ["env"]
+
+# Additional directory names to treat as cleanable targets.
+[targets.custom]
+".turbo" = "Turborepo cache"
+"build" = "Build output"
+
+[ignore]
+# Absolute or ~-relative paths that devclean must never remove.
+paths = [
+    "~/important-project/node_modules",
+]

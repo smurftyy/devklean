@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from devclean.cli.commands.common import scan_directory
+from devclean.config.models import AppConfig
 from devclean.deleter import delete_items
 from devclean.models import CleanableItem
 from devclean.output.base import Renderer
@@ -23,9 +24,9 @@ def run_standard(renderer: Renderer, found: list[CleanableItem], dry_run: bool) 
     renderer.deletion_result(result)
 
 
-def run_clean(args, renderer: Renderer) -> int:
+def run_clean(args, renderer: Renderer, config: AppConfig) -> int:
     """Scan and optionally delete cleanable directories."""
-    exit_code, found = scan_directory(args, renderer)
+    exit_code, found = scan_directory(args, renderer, config)
     if exit_code != 0 or found is None:
         return exit_code
 

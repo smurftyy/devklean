@@ -6,6 +6,7 @@ from typing import Callable
 from devclean.cli.commands.clean import run_clean
 from devclean.cli.commands.scan import run_scan
 from devclean.cli.parser import IMPLEMENTED_COMMANDS, RESERVED_COMMANDS
+from devclean.config.models import AppConfig
 from devclean.output.base import Renderer
 
 CommandHandler = Callable[..., int]
@@ -18,7 +19,7 @@ _COMMANDS: dict[str, CommandHandler] = {
 }
 
 
-def dispatch(args, renderer: Renderer) -> int:
+def dispatch(args, renderer: Renderer, config: AppConfig) -> int:
     """Route parsed arguments to the appropriate command handler."""
     command = getattr(args, "command", None) or DEFAULT_COMMAND
 
@@ -31,4 +32,4 @@ def dispatch(args, renderer: Renderer) -> int:
         return 2
 
     handler = _COMMANDS[command]
-    return handler(args, renderer)
+    return handler(args, renderer, config)
