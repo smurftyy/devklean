@@ -37,6 +37,7 @@ class DeletionMetadataItem:
 class DeletionMetadataRecord:
     schema_version: int
     deletion_id: str
+    run_id: str | None
     timestamp: str
     strategy: str
     item: DeletionMetadataItem
@@ -47,6 +48,7 @@ class DeletionMetadataRecord:
             "schema_version": self.schema_version,
             "deletion": {
                 "id": self.deletion_id,
+                "run_id": self.run_id,
                 "timestamp": self.timestamp,
                 "strategy": self.strategy,
             },
@@ -89,6 +91,7 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
             trash = DeletionMetadataTrash(path=trash_path)
 
     deletion_id = deletion.get("id")
+    run_id = deletion.get("run_id")
     timestamp = deletion.get("timestamp")
     strategy = deletion.get("strategy")
     original_path = item.get("original_path")
@@ -98,6 +101,7 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
     if not all(
         [
             isinstance(deletion_id, str),
+            run_id is None or isinstance(run_id, str),
             isinstance(timestamp, str),
             isinstance(strategy, str),
             isinstance(original_path, str),
@@ -110,6 +114,7 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
     return DeletionMetadataRecord(
         schema_version=int(data.get("schema_version", 1)),
         deletion_id=deletion_id,
+        run_id=run_id,
         timestamp=timestamp,
         strategy=strategy,
         item=DeletionMetadataItem(
@@ -173,6 +178,8 @@ class MetadataManager:
         self._storage_dir.mkdir(parents=True, exist_ok=True)
 
         trashed_paths = iter(result.trashed)
+        run_id = uuid4().hex
+        timestamp = datetime.now(timezone.utc).isoformat()
 
         for item in items:
             if item.path not in deleted_paths:
@@ -180,9 +187,10 @@ class MetadataManager:
 
             trashed_path = next(trashed_paths, None)
             record = DeletionMetadataRecord(
-                schema_version=2,
+                schema_version=3,
                 deletion_id=uuid4().hex,
-                timestamp=datetime.now(timezone.utc).isoformat(),
+                run_id=run_id,
+                timestamp=timestamp,
                 strategy=strategy,
                 item=DeletionMetadataItem(
                     original_path=item.path,

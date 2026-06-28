@@ -1,6 +1,19 @@
 from __future__ import annotations
 
-from devklean.formatting import BOLD, CYAN, DIM, GREEN, RED, RESET, YELLOW, format_size
+from typing import Sequence
+
+from devklean.deletion.history import HistoryOperation
+from devklean.formatting import (
+    BOLD,
+    CYAN,
+    DIM,
+    GREEN,
+    RED,
+    RESET,
+    YELLOW,
+    format_size,
+    format_timestamp,
+)
 from devklean.models import CleanableItem, DeleteResult
 from devklean.output.sorting import items_by_size_desc
 
@@ -73,3 +86,32 @@ class TextRenderer:
         if result.failed_count:
             print(f"{RED}{result.failed_count} failed.{RESET}")
         print()
+
+    def history(
+        self,
+        operations: Sequence[HistoryOperation],
+        invalid_count: int,
+    ) -> None:
+        if not operations:
+            print(f"{DIM}No cleanup history.{RESET}")
+            self._print_invalid_note(invalid_count)
+            return
+
+        print(f"\n{BOLD}Cleanup history{RESET}\n")
+        print(f"{'WHEN':<18} {'SIZE':>9}  {'STRATEGY':<10} {'ITEMS':>5}")
+        print(f"{DIM}{'─'*48}{RESET}")
+
+        for op in operations:
+            print(
+                f"{DIM}{format_timestamp(op.timestamp):<18}{RESET} "
+                f"{GREEN}{format_size(op.reclaimed_size):>9}{RESET}  "
+                f"{op.strategy:<10} "
+                f"{op.item_count:>5}"
+            )
+        print()
+        self._print_invalid_note(invalid_count)
+
+    def _print_invalid_note(self, invalid_count: int) -> None:
+        if invalid_count:
+            plural = "s" if invalid_count != 1 else ""
+            print(f"{DIM}Skipped {invalid_count} invalid metadata file{plural}.{RESET}")

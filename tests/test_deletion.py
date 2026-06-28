@@ -156,8 +156,9 @@ def test_delete_items_records_only_successes(tmp_path: Path) -> None:
     payload = json.loads(records[0].read_text(encoding="utf-8"))
 
     assert result.deleted == ("/tmp/a",)
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 3
     assert payload["deletion"]["strategy"] == "trash"
+    assert isinstance(payload["deletion"]["run_id"], str) and payload["deletion"]["run_id"]
     assert payload["item"]["original_path"] == "/tmp/a"
     assert payload["item"]["display_name"] == "A"
     assert payload["item"]["size"] == 10
@@ -181,3 +182,43 @@ def test_metadata_manager_skips_failed_deletions(tmp_path: Path) -> None:
     records = sorted(storage_dir.glob("*.json"))
     assert len(records) == 1
     assert json.loads(records[0].read_text(encoding="utf-8"))["item"]["original_path"] == "/tmp/a"
+
+
+def test_record_successes_shares_one_run_id_across_a_batch(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "metadata"
+    manager = MetadataManager(storage_dir=storage_dir)
+    items = [
+        CleanableItem("/tmp/a", "a", 10, "A"),
+        CleanableItem("/tmp/b", "b", 20, "B"),
+    ]
+    result = DeleteResult(deleted=("/tmp/a", "/tmp/b"), failed=(), total_size=30)
+
+    manager.record_successes(items, result, "trash")
+
+    snapshot = manager.load_records()
+    run_ids = {entry.record.run_id for entry in snapshot.records}
+    timestamps = {entry.record.timestamp for entry in snapshot.records}
+    assert len(snapshot.records) == 2
+    assert len(run_ids) == 1 and None not in run_ids
+    assert len(timestamps) == 1
+
+
+def test_load_records_parses_legacy_v2_file_without_run_id(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "metadata"
+    storage_dir.mkdir()
+    legacy = {
+        "schema_version": 2,
+        "deletion": {
+            "id": "legacy1",
+            "timestamp": "2026-06-01T12:00:00+00:00",
+            "strategy": "trash",
+        },
+        "item": {"original_path": "/tmp/old", "display_name": "Old", "size": 42},
+    }
+    (storage_dir / "legacy.json").write_text(json.dumps(legacy), encoding="utf-8")
+
+    snapshot = MetadataManager(storage_dir=storage_dir).load_records()
+
+    assert snapshot.invalid_count == 0
+    assert len(snapshot.records) == 1
+    assert snapshot.records[0].record.run_id is None

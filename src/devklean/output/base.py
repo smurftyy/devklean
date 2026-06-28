@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, Sequence
 
+from devklean.deletion.history import HistoryOperation
 from devklean.models import CleanableItem, DeleteResult
 
 
@@ -36,4 +37,11 @@ class Renderer(Protocol):
         ...
 
     def deletion_result(self, result: DeleteResult) -> None:
+        ...
+
+    def history(
+        self,
+        operations: Sequence[HistoryOperation],
+        invalid_count: int,
+    ) -> None:
         ...

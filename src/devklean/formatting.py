@@ -1,3 +1,5 @@
+from datetime import datetime
+
 # ANSI colors
 CYAN = "\033[36m"
 GREEN = "\033[32m"
@@ -14,6 +16,18 @@ def format_size(size_bytes: float) -> str:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024
     return f"{size_bytes:.1f} TB"
+
+
+def format_timestamp(value: str) -> str:
+    """Render a stored UTC ISO timestamp as local ``YYYY-MM-DD HH:MM``.
+
+    Falls back to the raw value if it cannot be parsed.
+    """
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return value
+    return parsed.astimezone().strftime("%Y-%m-%d %H:%M")
 
 
 def truncate(text: str, max_len: int) -> str:

@@ -9,7 +9,7 @@ from devklean.output import JsonRenderer, TextRenderer
 
 
 def select_renderer(args):
-    if getattr(args, "command", None) == "scan" and getattr(args, "json", False):
+    if getattr(args, "command", None) in {"scan", "history"} and getattr(args, "json", False):
         return JsonRenderer()
     return TextRenderer()
 

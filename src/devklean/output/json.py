@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
+from typing import Sequence
 
+from devklean.deletion.history import HistoryOperation
 from devklean.models import CleanableItem, DeleteResult
+from devklean.output.history_payload import build_history_payload
 from devklean.output.scan_payload import (
     build_error_payload,
     build_scan_payload,
@@ -51,6 +54,13 @@ class JsonRenderer:
 
     def deletion_result(self, result: DeleteResult) -> None:
         pass
+
+    def history(
+        self,
+        operations: Sequence[HistoryOperation],
+        invalid_count: int,
+    ) -> None:
+        self._emit(build_history_payload(operations))
 
     def _emit(self, payload: dict) -> None:
         json.dump(payload, self._stream, indent=2)
