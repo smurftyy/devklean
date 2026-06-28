@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/devclean/devclean/schemas/scan-v1.json",
+  "title": "devclean scan output",
+  "description": "Machine-readable output for `devclean scan --json`.",
+  "oneOf": [
+    { "$ref": "#/$defs/scanResult" },
+    { "$ref": "#/$defs/scanError" }
+  ],
+  "$defs": {
+    "scanResult": {
+      "type": "object",
+      "required": ["version", "root", "items", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "const": "1.0"
+        },
+        "root": {
+          "type": "string",
+          "description": "Absolute path of the scanned root directory."
+        },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cleanableItem" }
+        },
+        "summary": {
+          "type": "object",
+          "required": ["count", "total_size", "formatted_total_size"],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_size": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Combined size of all items in bytes."
+            },
+            "formatted_total_size": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "cleanableItem": {
+      "type": "object",
+      "required": [
+        "path",
+        "display_name",
+        "size",
+        "formatted_size",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute path to the cleanable directory."
+        },
+        "display_name": {
+          "type": "string",
+          "description": "Human-readable label for the target type."
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Directory size in bytes."
+        },
+        "formatted_size": {
+          "type": "string",
+          "description": "Human-readable size string."
+        },
+        "type": {
+          "type": "string",
+          "description": "Target directory name (for example node_modules)."
+        }
+      }
+    },
+    "scanError": {
+      "type": "object",
+      "required": ["version", "error"],
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string",
+          "const": "1.0"
+        },
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

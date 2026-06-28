@@ -48,6 +48,11 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
         help="Scan for cleanable directories without deleting",
     )
     _add_path_argument(scan_parser)
+    scan_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Output scan results as JSON",
+    )
 
     clean_parser = subparsers.add_parser(
         "clean",

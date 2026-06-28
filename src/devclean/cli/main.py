@@ -5,7 +5,13 @@ import sys
 from devclean.cli.dispatcher import dispatch
 from devclean.cli.parser import build_parser, preprocess_argv
 from devclean.config import ConfigManager
-from devclean.output import TextRenderer
+from devclean.output import JsonRenderer, TextRenderer
+
+
+def select_renderer(args):
+    if getattr(args, "command", None) == "scan" and getattr(args, "json", False):
+        return JsonRenderer()
+    return TextRenderer()
 
 
 def main() -> None:
@@ -20,7 +26,7 @@ def main() -> None:
     args._config = config
     config_manager.apply_defaults(args, raw_argv)
 
-    renderer = TextRenderer()
+    renderer = select_renderer(args)
     exit_code = dispatch(args, renderer, config)
 
     if exit_code != 0:

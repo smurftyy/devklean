@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "root": "/home/user/projects/my-app",
+  "items": [
+    {
+      "path": "/home/user/projects/my-app/node_modules",
+      "display_name": "Node.js",
+      "size": 524288000,
+      "formatted_size": "500.0 MB",
+      "type": "node_modules"
+    },
+    {
+      "path": "/home/user/projects/my-app/.venv",
+      "display_name": "Python venv",
+      "size": 104857600,
+      "formatted_size": "100.0 MB",
+      "type": ".venv"
+    }
+  ],
+  "summary": {
+    "count": 2,
+    "total_size": 629145600,
+    "formatted_total_size": "600.0 MB"
+  }
+}
