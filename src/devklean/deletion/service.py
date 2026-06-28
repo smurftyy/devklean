@@ -4,12 +4,13 @@ from collections.abc import Sequence
 
 from devklean.deletion.interfaces import DeletionStrategy
 from devklean.deletion.metadata import MetadataManager
+from devklean.deletion.safety import SafetyValidator
 from devklean.deletion.trash import TrashStrategy
 from devklean.models import CleanableItem, DeleteResult
 
 
-def default_deletion_strategy() -> DeletionStrategy:
-    return TrashStrategy()
+def default_deletion_strategy(allow_symlinks: bool = False) -> DeletionStrategy:
+    return TrashStrategy(validator=SafetyValidator(allow_symlinks=allow_symlinks))
 
 
 def default_metadata_manager() -> MetadataManager:

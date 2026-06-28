@@ -9,19 +9,25 @@ from ctypes import wintypes
 from pathlib import Path
 from typing import Sequence
 
-from devklean.deletion.interfaces import DeletionStrategy
+from devklean.deletion.base import BaseDeletionStrategy
+from devklean.deletion.safety import SafetyValidator
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
-class TrashStrategy(DeletionStrategy):
+class TrashStrategy(BaseDeletionStrategy):
     """Move deleted items to the operating system trash when possible."""
 
     name = "trash"
 
-    def __init__(self, trash_root: Path | None = None) -> None:
+    def __init__(
+        self,
+        trash_root: Path | None = None,
+        validator: SafetyValidator | None = None,
+    ) -> None:
+        super().__init__(validator)
         self._trash_root = trash_root
 
-    def delete(
+    def _delete_safe(
         self,
         items: Sequence[CleanableItem],
         total_size: int,

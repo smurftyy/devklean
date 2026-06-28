@@ -81,8 +81,9 @@ def run_restore(args, renderer, config) -> int:
     _print_listing(entries)
 
     if snapshot.invalid_count:
-        print(f"Skipped {snapshot.invalid_count} invalid metadata file"
-              f"{'s' if snapshot.invalid_count != 1 else ''}.")
+        plural = "s" if snapshot.invalid_count != 1 else ""
+        print(f"Skipped {snapshot.invalid_count} corrupt metadata record{plural} "
+              f"— run `devclean doctor` to inspect.")
 
     selection = input(_selection_prompt(len(entries)))
     selected_indices = _parse_selection(selection, len(entries))

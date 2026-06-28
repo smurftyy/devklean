@@ -114,4 +114,7 @@ class TextRenderer:
     def _print_invalid_note(self, invalid_count: int) -> None:
         if invalid_count:
             plural = "s" if invalid_count != 1 else ""
-            print(f"{DIM}Skipped {invalid_count} invalid metadata file{plural}.{RESET}")
+            print(
+                f"{YELLOW}Skipped {invalid_count} corrupt metadata record{plural} "
+                f"— run `devclean doctor` to inspect.{RESET}"
+            )

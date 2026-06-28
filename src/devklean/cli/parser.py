@@ -5,9 +5,9 @@ import argparse
 from devklean._version import __version__
 
 COMMAND_NAMES = frozenset(
-    {"scan", "clean", "history", "stats", "restore", "config", "plugins"}
+    {"scan", "clean", "history", "doctor", "stats", "restore", "config", "plugins"}
 )
-IMPLEMENTED_COMMANDS = frozenset({"scan", "clean", "history", "restore"})
+IMPLEMENTED_COMMANDS = frozenset({"scan", "clean", "history", "doctor", "restore"})
 RESERVED_COMMANDS = frozenset({"stats", "config", "plugins"})
 GLOBAL_OPTIONS = frozenset({"-h", "--help", "--version"})
 
@@ -42,6 +42,11 @@ def _add_clean_arguments(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Interactively select items to delete",
     )
+    parser.add_argument(
+        "--allow-symlinks",
+        action="store_true",
+        help="Permit deletion of symbolic links (blocked by default)",
+    )
 
 
 def _add_subparsers(parser: argparse.ArgumentParser) -> None:
@@ -74,6 +79,17 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
         "--json",
         action="store_true",
         help="Output history as JSON",
+    )
+
+    doctor_parser = subparsers.add_parser(
+        "doctor",
+        help="Inspect and repair the deletion metadata store",
+    )
+    doctor_parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Remove corrupt records without confirmation",
     )
 
     subparsers.add_parser("stats", help="Show cleanup statistics (not yet implemented)")
@@ -110,13 +126,13 @@ def preprocess_argv(argv: list[str]) -> list[str]:
         command = legacy_command_for_flags(argv[2:])
         rewritten = [argv[0], command, argv[1], *argv[2:]]
         if command == "scan":
-            return strip_flags(rewritten, {"--dry-run"})
+            return strip_flags(rewritten, {"--dry-run", "--allow-symlinks"})
         return rewritten
 
     command = legacy_command_for_flags(argv[1:])
     rewritten = [argv[0], command, *argv[1:]]
     if command == "scan":
-        return strip_flags(rewritten, {"--dry-run"})
+        return strip_flags(rewritten, {"--dry-run", "--allow-symlinks"})
     return rewritten
 
 

@@ -4,6 +4,7 @@ import sys
 from typing import Callable
 
 from devklean.cli.commands.clean import run_clean
+from devklean.cli.commands.doctor import run_doctor
 from devklean.cli.commands.history import run_history
 from devklean.cli.commands.scan import run_scan
 from devklean.cli.commands.restore import run_restore
@@ -20,6 +21,7 @@ _COMMANDS: dict[str, CommandHandler] = {
     "scan": run_scan,
     "clean": run_clean,
     "history": run_history,
+    "doctor": run_doctor,
     "restore": run_restore,
 }
 
@@ -38,5 +40,6 @@ def dispatch(args, renderer: Renderer, config: AppConfig) -> int:
 
     handler = _COMMANDS[command]
     if command == "clean":
-        return handler(args, renderer, config, default_deletion_strategy())
+        allow_symlinks = getattr(args, "allow_symlinks", False)
+        return handler(args, renderer, config, default_deletion_strategy(allow_symlinks))
     return handler(args, renderer, config)

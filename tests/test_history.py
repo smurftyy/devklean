@@ -183,6 +183,18 @@ def test_text_renderer_history_empty_state(capsys) -> None:
     assert "No cleanup history" in capsys.readouterr().out
 
 
+def test_text_renderer_history_corrupt_note_points_to_doctor(capsys) -> None:
+    operations = (
+        HistoryOperation("run1", "2026-06-28T14:02:00+00:00", "trash", 1, 100),
+    )
+
+    TextRenderer().history(operations, invalid_count=2)
+
+    out = capsys.readouterr().out
+    assert "2 corrupt" in out
+    assert "doctor" in out
+
+
 def _write_metadata(directory: Path, *, deletion_id: str, run_id, size: int) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     payload = {

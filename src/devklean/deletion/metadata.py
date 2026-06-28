@@ -72,16 +72,28 @@ class StoredDeletionMetadata:
 
 
 @dataclass(frozen=True)
+class CorruptMetadata:
+    """A metadata file that could not be parsed, with the reason why."""
+
+    path: Path
+    reason: str
+
+
+@dataclass(frozen=True)
 class MetadataLoadResult:
     records: tuple[StoredDeletionMetadata, ...]
-    invalid_count: int
+    corrupt: tuple[CorruptMetadata, ...]
+
+    @property
+    def invalid_count(self) -> int:
+        return len(self.corrupt)
 
 
 def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataRecord:
     deletion = data.get("deletion")
     item = data.get("item")
     if not isinstance(deletion, dict) or not isinstance(item, dict):
-        raise ValueError("invalid metadata structure")
+        raise ValueError("missing or invalid 'deletion'/'item' section")
 
     trash_data = data.get("trash")
     trash = None
@@ -109,7 +121,7 @@ def _parse_record_path(path: Path, data: dict[str, object]) -> DeletionMetadataR
             isinstance(size, int),
         ]
     ):
-        raise ValueError("invalid metadata values")
+        raise ValueError("missing or wrong-typed metadata fields")
 
     return DeletionMetadataRecord(
         schema_version=int(data.get("schema_version", 1)),
@@ -142,25 +154,31 @@ class MetadataManager:
 
     def load_records(self) -> MetadataLoadResult:
         if not self._storage_dir.exists():
-            return MetadataLoadResult(records=(), invalid_count=0)
+            return MetadataLoadResult(records=(), corrupt=())
 
         records: list[StoredDeletionMetadata] = []
-        invalid_count = 0
+        corrupt: list[CorruptMetadata] = []
 
         for path in sorted(self._storage_dir.glob("*.json")):
             try:
                 data = json.loads(path.read_text(encoding="utf-8"))
                 if not isinstance(data, dict):
-                    raise ValueError("metadata file did not contain a JSON object")
+                    raise ValueError("metadata file is not a JSON object")
                 record = _parse_record_path(path, data)
-            except (OSError, json.JSONDecodeError, ValueError, TypeError):
-                invalid_count += 1
+            except json.JSONDecodeError:
+                corrupt.append(CorruptMetadata(path=path, reason="malformed JSON"))
+                continue
+            except OSError as exc:
+                corrupt.append(CorruptMetadata(path=path, reason=f"unreadable file: {exc}"))
+                continue
+            except (ValueError, TypeError) as exc:
+                corrupt.append(CorruptMetadata(path=path, reason=str(exc)))
                 continue
 
             records.append(StoredDeletionMetadata(path=path, record=record))
 
         records.sort(key=_metadata_sort_key, reverse=True)
-        return MetadataLoadResult(records=tuple(records), invalid_count=invalid_count)
+        return MetadataLoadResult(records=tuple(records), corrupt=tuple(corrupt))
 
     def remove_record(self, stored: StoredDeletionMetadata) -> None:
         stored.path.unlink(missing_ok=True)
