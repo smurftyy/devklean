@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 
 from devklean.config.models import AppConfig
+from devklean.logging_setup import get_logger
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
 from devklean.scanner.scanner import scan_tree
@@ -21,6 +22,10 @@ def scan_directory(
 
     renderer.scan_start(root)
     report = scan_tree(root, settings=config.scan_settings)
+    get_logger().info(
+        "scan root=%s found=%d permission_errors=%d",
+        root, len(report.items), len(report.permission_errors),
+    )
     if report.permission_errors:
         renderer.permission_warnings(report.permission_errors)
 

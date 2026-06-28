@@ -6,6 +6,7 @@ from devklean.deletion.interfaces import DeletionStrategy
 from devklean.deletion.metadata import MetadataManager
 from devklean.deletion.safety import SafetyValidator
 from devklean.deletion.trash import TrashStrategy
+from devklean.logging_setup import get_logger
 from devklean.models import CleanableItem, DeleteResult
 
 
@@ -27,9 +28,22 @@ def delete_items(
     backend = strategy or default_deletion_strategy()
     result = backend.delete(items, total_size, dry_run=dry_run)
 
+    logger = get_logger()
     if dry_run:
-        # No deletion happened, so nothing is recorded.
+        logger.info(
+            "dry-run plan strategy=%s would_delete=%d size=%d",
+            _strategy_name(backend), result.deleted_count, result.total_size,
+        )
         return result
+
+    for path in result.deleted:
+        logger.info("deleted strategy=%s path=%s", _strategy_name(backend), path)
+    for failure in result.failed:
+        logger.warning("delete failed path=%s error=%s", failure.path, failure.error)
+    logger.info(
+        "deletion summary strategy=%s deleted=%d failed=%d size=%d",
+        _strategy_name(backend), result.deleted_count, result.failed_count, result.total_size,
+    )
 
     manager = metadata_manager or default_metadata_manager()
     manager.record_successes(items, result, _strategy_name(backend))

@@ -5,11 +5,17 @@ from dataclasses import dataclass, field
 from devklean.config.defaults import DEFAULT_TARGETS
 
 
+_DEFAULT_CONFIRM_THRESHOLD = 1024 ** 3  # 1 GiB
+
+
 @dataclass(frozen=True)
 class DefaultsConfig:
     dry_run: bool = False
     interactive: bool = False
     path: str = "."
+    default_yes: bool = False
+    theme: str = "default"
+    confirm_threshold: int = _DEFAULT_CONFIRM_THRESHOLD
 
 
 @dataclass(frozen=True)
