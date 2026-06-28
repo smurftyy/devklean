@@ -3,7 +3,7 @@ from devklean.scanner.filters import (
     normalize_paths,
     path_is_excluded,
 )
-from devklean.scanner.scanner import get_dir_size, scan
+from devklean.scanner.scanner import ScanResult, get_dir_size, scan, scan_tree
 
 # Backward-compatible alias used by tests and external imports.
 from devklean.config.defaults import DEFAULT_TARGETS
@@ -12,10 +12,12 @@ TARGETS = DEFAULT_TARGETS
 
 __all__ = [
     "DEFAULT_TARGETS",
+    "ScanResult",
     "TARGETS",
     "dir_is_under_ignored_path",
     "get_dir_size",
     "normalize_paths",
     "path_is_excluded",
     "scan",
+    "scan_tree",
 ]
