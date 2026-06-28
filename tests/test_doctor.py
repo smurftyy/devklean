@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from argparse import Namespace
@@ -118,7 +119,7 @@ def test_doctor_command_end_to_end(tmp_path) -> None:
     meta = _meta_dir(tmp_path)
     _corrupt(meta, "bad")
 
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "doctor", "--yes"],
         capture_output=True,

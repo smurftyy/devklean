@@ -36,6 +36,8 @@ def test_blocks_home_directory(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "me"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
+    # Path.home() reads USERPROFILE on Windows, HOME on POSIX; set both.
+    monkeypatch.setenv("USERPROFILE", str(home))
 
     violation = SafetyValidator().validate(str(home))
 

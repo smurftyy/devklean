@@ -19,15 +19,21 @@ _BACKUP_COUNT = 5
 
 
 def get_log_path() -> Path:
-    """Return the rotating log file path (XDG cache / Windows LOCALAPPDATA aware)."""
+    """Return the rotating log file path (XDG cache / Windows LOCALAPPDATA aware).
+
+    An explicit ``XDG_CACHE_HOME`` override is honored on every platform; the
+    Windows-native ``LOCALAPPDATA`` location is only the fallback when it is unset.
+    """
+    cache = os.environ.get("XDG_CACHE_HOME")
+    if cache:
+        return Path(cache) / "devklean" / "logs" / "latest.log"
+
     if sys.platform == "win32":
         base = os.environ.get("LOCALAPPDATA")
         root = Path(base) if base else Path.home() / "AppData" / "Local"
         return root / "devklean" / "logs" / "latest.log"
 
-    cache = os.environ.get("XDG_CACHE_HOME")
-    root = Path(cache) if cache else Path.home() / ".cache"
-    return root / "devklean" / "logs" / "latest.log"
+    return Path.home() / ".cache" / "devklean" / "logs" / "latest.log"
 
 
 def get_logger() -> logging.Logger:

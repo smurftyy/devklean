@@ -2,20 +2,9 @@
 
 from __future__ import annotations
 
-import time
-
 import pytest
 
 from devklean.formatting import format_size, format_timestamp, truncate
-
-
-@pytest.fixture
-def utc_timezone(monkeypatch):
-    monkeypatch.setenv("TZ", "UTC")
-    time.tzset()
-    yield
-    monkeypatch.undo()
-    time.tzset()
 
 
 def test_format_timestamp_converts_utc_iso_to_local_minute(utc_timezone) -> None:

@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
-import time
 from io import StringIO
 from pathlib import Path
-
-import pytest
 
 from devklean.deletion.history import HistoryOperation, build_history
 from devklean.deletion.metadata import (
@@ -141,15 +139,6 @@ def test_build_history_payload_empty() -> None:
     assert payload["summary"]["total_reclaimed_size"] == 0
 
 
-@pytest.fixture
-def utc_timezone(monkeypatch):
-    monkeypatch.setenv("TZ", "UTC")
-    time.tzset()
-    yield
-    monkeypatch.undo()
-    time.tzset()
-
-
 def test_json_renderer_emits_history() -> None:
     stream = StringIO()
     renderer = JsonRenderer(stream=stream)
@@ -213,7 +202,7 @@ def test_history_command_text_output(tmp_path: Path) -> None:
     _write_metadata(deletions, deletion_id="a", run_id="run1", size=100)
     _write_metadata(deletions, deletion_id="b", run_id="run1", size=300)
 
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "history"],
         capture_output=True,
@@ -233,7 +222,7 @@ def test_history_command_json_output(tmp_path: Path) -> None:
     _write_metadata(deletions, deletion_id="a", run_id="run1", size=100)
     _write_metadata(deletions, deletion_id="b", run_id="run1", size=300)
 
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "history", "--json"],
         capture_output=True,
@@ -250,7 +239,7 @@ def test_history_command_json_output(tmp_path: Path) -> None:
 
 
 def test_history_command_empty_store(tmp_path: Path) -> None:
-    env = {"XDG_DATA_HOME": str(tmp_path / "data"), "PATH": "/usr/bin:/bin"}
+    env = {**os.environ, "XDG_DATA_HOME": str(tmp_path / "data")}
     result = subprocess.run(
         [sys.executable, "-m", "devklean", "history"],
         capture_output=True,

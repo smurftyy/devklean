@@ -91,9 +91,12 @@ class SafetyValidator:
         protected_paths: frozenset[str] | None = None,
     ) -> None:
         self._allow_symlinks = allow_symlinks
-        self._protected = (
-            protected_paths if protected_paths is not None else protected_system_paths()
-        )
+        # Normalize whatever set we hold so injected protected_paths match the
+        # same way the default set does (_normalize is idempotent). Without this
+        # an injected raw path never matches the normalized candidate on Windows,
+        # where _normalize also lower-cases.
+        raw = protected_paths if protected_paths is not None else protected_system_paths()
+        self._protected = frozenset(_normalize(path) for path in raw)
 
     def validate(self, path: str) -> SafetyViolation | None:
         """Return the first violated rule for ``path``, or None if safe.

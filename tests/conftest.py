@@ -4,9 +4,25 @@ from __future__ import annotations
 
 import os
 import shutil
+import time
 from pathlib import Path
 
 import pytest
+
+
+@pytest.fixture
+def utc_timezone(monkeypatch):
+    """Pin the local timezone to UTC for deterministic timestamp formatting.
+
+    ``time.tzset()`` only exists on Unix, so the calls are guarded for Windows.
+    """
+    monkeypatch.setenv("TZ", "UTC")
+    if hasattr(time, "tzset"):
+        time.tzset()
+    yield
+    monkeypatch.undo()
+    if hasattr(time, "tzset"):
+        time.tzset()
 
 
 @pytest.fixture
