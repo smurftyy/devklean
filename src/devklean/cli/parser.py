@@ -105,8 +105,12 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
     subparsers.add_parser("plugins", help="Manage plugins (not yet implemented)")
 
 
-def legacy_command_for_flags(args: list[str]) -> str:
-    """Map legacy root-level flags to the equivalent subcommand."""
+def default_command_for_flags(args: list[str]) -> str:
+    """Pick the default subcommand for a bare top-level invocation.
+
+    With no explicit command, a bare ``--dry-run`` (without ``-i``) is a preview,
+    so it maps to ``scan``; everything else defaults to ``clean``.
+    """
     dry_run = "--dry-run" in args
     interactive = "-i" in args or "--interactive" in args
     if dry_run and not interactive:
@@ -119,8 +123,15 @@ def strip_flags(argv: list[str], flags: set[str]) -> list[str]:
     return [arg for arg in argv if arg not in flags]
 
 
-def preprocess_argv(argv: list[str]) -> list[str]:
-    """Rewrite legacy invocations to explicit subcommands."""
+def resolve_bare_invocation(argv: list[str]) -> list[str]:
+    """Resolve a bare invocation (no explicit subcommand) to one.
+
+    devklean accepts a default-command shorthand: ``devklean`` alone, or with a
+    path/flags but no command word, runs ``clean`` (e.g. ``devklean ~/code`` ==
+    ``devklean clean ~/code``); a bare ``--dry-run`` is treated as ``scan``.
+    Explicit subcommands and global options (``--help``/``--version``) pass
+    through unchanged.
+    """
     if len(argv) <= 1:
         return [argv[0], "clean"]
 
@@ -131,13 +142,13 @@ def preprocess_argv(argv: list[str]) -> list[str]:
         return argv
 
     if not argv[1].startswith("-"):
-        command = legacy_command_for_flags(argv[2:])
+        command = default_command_for_flags(argv[2:])
         rewritten = [argv[0], command, argv[1], *argv[2:]]
         if command == "scan":
             return strip_flags(rewritten, {"--dry-run", "--allow-symlinks"})
         return rewritten
 
-    command = legacy_command_for_flags(argv[1:])
+    command = default_command_for_flags(argv[1:])
     rewritten = [argv[0], command, *argv[1:]]
     if command == "scan":
         return strip_flags(rewritten, {"--dry-run", "--allow-symlinks"})

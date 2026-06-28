@@ -49,6 +49,8 @@ devklean clean --dry-run
 | `devklean doctor` | Inspect and repair the deletion metadata store. |
 | `devklean --version` | Print the version. |
 
+**Default command:** running `devklean` with no subcommand defaults to `clean` — so `devklean` is `devklean clean`, and `devklean ~/code` is `devklean clean ~/code`. As a convenience, a bare `devklean --dry-run` (without `-i`) is treated as a `scan` preview.
+
 ### `scan`
 
 ```bash
