@@ -4,8 +4,9 @@ import curses
 from typing import List, Optional
 
 from devclean.deleter import delete_items
-from devclean.formatting import DIM, YELLOW, format_size, truncate
+from devclean.formatting import format_size, truncate
 from devclean.models import CleanableItem
+from devclean.output.base import Renderer
 
 
 def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optional[List[int]]:
@@ -77,23 +78,24 @@ def interactive_ui(stdscr, items: List[CleanableItem], dry_run: bool) -> Optiona
             return [i for i, s in enumerate(selected) if s]
 
 
-def run_interactive(found: List[CleanableItem], dry_run: bool) -> None:
+def run_interactive(renderer: Renderer, found: List[CleanableItem], dry_run: bool) -> None:
     items = sorted(found, key=lambda x: -x.size)
 
     selected_indices = curses.wrapper(interactive_ui, items, dry_run)
     if selected_indices is None:
-        print(f"\n{DIM}Aborted. Nothing deleted.{RESET}\n")
+        renderer.aborted()
         return
 
     selected = [items[i] for i in selected_indices]
     if not selected:
-        print(f"\n{DIM}No items selected. Nothing deleted.{RESET}\n")
+        renderer.no_items_selected()
         return
 
     total_size = sum(item.size for item in selected)
 
     if dry_run:
-        print(f"{YELLOW}[dry-run] {len(selected)} director{'y' if len(selected)==1 else 'ies'} selected, nothing deleted.{RESET}\n")
+        renderer.dry_run_selected(len(selected))
         return
 
-    delete_items(selected, total_size)
+    result = delete_items(selected, total_size)
+    renderer.deletion_result(result)

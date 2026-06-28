@@ -2,25 +2,22 @@ from __future__ import annotations
 
 import shutil
 
-from devclean.formatting import BOLD, DIM, GREEN, RED, RESET, format_size
-from devclean.models import CleanableItem
+from devclean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
-def delete_items(items: list[CleanableItem], total_size: int) -> None:
-    deleted = 0
-    failed = 0
+def delete_items(items: list[CleanableItem], total_size: int) -> DeleteResult:
+    deleted: list[str] = []
+    failed: list[DeleteFailure] = []
 
-    print()
     for item in items:
         try:
             shutil.rmtree(item.path)
-            print(f"  {GREEN}✓{RESET} {DIM}{item.path}{RESET}")
-            deleted += 1
+            deleted.append(item.path)
         except Exception as e:
-            print(f"  {RED}✗{RESET} {item.path} — {e}")
-            failed += 1
+            failed.append(DeleteFailure(path=item.path, error=str(e)))
 
-    print(f"\n{GREEN}{BOLD}Cleaned {deleted} director{'y' if deleted==1 else 'ies'}, freed ~{format_size(total_size)}.{RESET}")
-    if failed:
-        print(f"{RED}{failed} failed.{RESET}")
-    print()
+    return DeleteResult(
+        deleted=tuple(deleted),
+        failed=tuple(failed),
+        total_size=total_size,
+    )
