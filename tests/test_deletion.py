@@ -13,32 +13,51 @@ from devklean.deletion.trash import TrashStrategy
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
-def test_trash_strategy_moves_directory_to_trash(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data-home"))
-
-    source_root = tmp_path / "workspace"
-    source = source_root / "node_modules"
+def test_trash_strategy_delegates_to_send2trash(tmp_path: Path, fake_trash) -> None:
+    source = tmp_path / "workspace" / "node_modules"
     source.mkdir(parents=True)
     (source / "package.json").write_text("{}")
 
-    item = CleanableItem(
-        path=str(source),
-        name="node_modules",
-        size=1024,
-        display_label="Node.js",
-    )
+    item = CleanableItem(str(source), "node_modules", 1024, "Node.js")
 
     result = TrashStrategy().delete([item], total_size=1024)
 
-    trash_target = tmp_path / "data-home" / "Trash" / "files" / "node_modules"
+    assert fake_trash == [str(source)]  # send2trash called with the item path
     assert not source.exists()
-    assert trash_target.exists()
     assert result.deleted == (str(source),)
     assert result.failed == ()
     assert result.total_size == 1024
+
+
+def test_trash_strategy_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+
+    item = CleanableItem(str(source), "node_modules", 1024, "Node.js")
+
+    result = TrashStrategy().delete([item], total_size=1024, dry_run=True)
+
+    assert fake_trash == []  # structural guard: no trashing under dry-run
+    assert source.exists()
+    assert result.deleted == (str(source),)
+
+
+def test_trash_strategy_translates_failure_into_delete_failure(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+
+    def _boom(path) -> None:
+        raise PermissionError("trash denied")
+
+    monkeypatch.setattr("devklean.deletion.trash.send2trash", _boom)
+
+    item = CleanableItem(str(source), "node_modules", 10, "Node.js")
+    result = TrashStrategy().delete([item], total_size=10)
+
+    assert result.deleted == ()
+    assert len(result.failed) == 1
+    assert result.failed[0].path == str(source)
+    assert "trash denied" in result.failed[0].error
 
 
 @dataclass

@@ -75,7 +75,9 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
     )
     _add_clean_arguments(clean_parser)
 
-    subparsers.add_parser("restore", help="List and restore deleted items")
+    subparsers.add_parser(
+        "restore", help="Show how to recover deleted items from your system trash"
+    )
 
     history_parser = subparsers.add_parser(
         "history",

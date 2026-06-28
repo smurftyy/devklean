@@ -6,42 +6,25 @@ from devklean.output.console import Console
 
 
 def _print_report(console: Console, report: IntegrityReport) -> None:
-    if report.corrupt:
-        console.plain()
-        console.warning(
-            console.paint(f"CORRUPT ({len(report.corrupt)})", "error")
-            + " — unparseable, will be removed on confirmation"
-        )
-        for entry in report.corrupt:
-            console.detail(f"  ✗ {entry.path.name}  — {entry.reason}")
-
-    if report.orphaned:
-        console.plain()
-        console.warning(
-            console.paint(f"ORPHANED ({len(report.orphaned)})", "warning")
-            + " — trash gone, cannot restore (reported only, kept)"
-        )
-        for orphan in report.orphaned:
-            record = orphan.stored.record
-            console.detail(f"  ! {record.item.display_name}  — {orphan.reason}")
+    console.plain()
+    console.warning(
+        console.paint(f"CORRUPT ({len(report.corrupt)})", "error")
+        + " — unparseable metadata, will be removed on confirmation"
+    )
+    for entry in report.corrupt:
+        console.detail(f"  ✗ {entry.path.name}  — {entry.reason}")
 
 
 def run_doctor(args, renderer, config) -> int:
-    """Inspect the metadata store and repair confirmed-corrupt records."""
+    """Inspect the metadata store and remove confirmed-corrupt records."""
     console = Console()
-    manager = MetadataManager()
-    report = check_integrity(manager)
+    report = check_integrity(MetadataManager())
 
     if report.healthy:
         console.success("Metadata store is healthy.")
         return 0
 
     _print_report(console, report)
-
-    if not report.corrupt:
-        console.plain()
-        console.detail("No corrupt records to remove. Orphaned records are kept as history.")
-        return 0
 
     if not getattr(args, "yes", False):
         count = len(report.corrupt)
@@ -62,8 +45,4 @@ def run_doctor(args, renderer, config) -> int:
     plural = "s" if removed != 1 else ""
     console.plain()
     console.success(f"Removed {removed} corrupt metadata record{plural}.")
-    if report.orphaned:
-        kept = len(report.orphaned)
-        plural = "s" if kept != 1 else ""
-        console.detail(f"Kept {kept} orphaned record{plural} (historical).")
     return 0

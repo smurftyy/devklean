@@ -78,6 +78,55 @@ def test_blocks_symlink_by_default(tmp_path: Path) -> None:
     assert violation.rule == "symlink"
 
 
+def test_symlink_that_is_a_protected_dir_is_classified_protected(tmp_path: Path) -> None:
+    # Reproduces the macOS case (/etc is a symlink into /private) on any
+    # platform: a symlink whose own path is protected must be reported as
+    # protected_system_directory, not symlink — ordering must put protected
+    # ahead of the symlink rule.
+    real = tmp_path / "private" / "etc"
+    real.mkdir(parents=True)
+    protected_link = tmp_path / "etc"
+    protected_link.symlink_to(real)
+
+    validator = SafetyValidator(protected_paths=frozenset({str(protected_link)}))
+    violation = validator.validate(str(protected_link))
+
+    assert violation is not None
+    assert violation.rule == "protected_system_directory"
+
+
+def test_symlink_protected_dir_not_bypassable_with_allow_symlinks(tmp_path: Path) -> None:
+    # --allow-symlinks must not let you delete a protected location that happens
+    # to be reached via a symlink.
+    real = tmp_path / "private" / "etc"
+    real.mkdir(parents=True)
+    protected_link = tmp_path / "etc"
+    protected_link.symlink_to(real)
+
+    validator = SafetyValidator(
+        allow_symlinks=True, protected_paths=frozenset({str(protected_link)})
+    )
+    violation = validator.validate(str(protected_link))
+
+    assert violation is not None
+    assert violation.rule == "protected_system_directory"
+
+
+def test_ordinary_symlink_outside_protected_is_still_symlink(tmp_path: Path) -> None:
+    # Inverse of the ordering fix: a symlink NOT pointing at / resolving into a
+    # protected location must still be classified as a symlink.
+    real = tmp_path / "real"
+    real.mkdir()
+    link = tmp_path / "link"
+    link.symlink_to(real)
+
+    validator = SafetyValidator(protected_paths=frozenset({"/some/protected/dir"}))
+    violation = validator.validate(str(link))
+
+    assert violation is not None
+    assert violation.rule == "symlink"
+
+
 def test_allows_symlink_when_opted_in(tmp_path: Path) -> None:
     real = tmp_path / "real_node_modules"
     real.mkdir()
@@ -113,8 +162,7 @@ def test_partition_splits_safe_and_blocked(tmp_path: Path) -> None:
     assert violation.rule == "filesystem_root"
 
 
-def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path) -> None:
-    trash_root = tmp_path / "trash"
+def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path, fake_trash) -> None:
     safe_dir = tmp_path / "proj" / "node_modules"
     safe_dir.mkdir(parents=True)
     (safe_dir / "package.json").write_text("{}")
@@ -122,7 +170,7 @@ def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path) 
     safe = _item(str(safe_dir), size=100)
     unsafe = _item("/", size=999)
 
-    result = TrashStrategy(trash_root=trash_root).delete([unsafe, safe], total_size=1099)
+    result = TrashStrategy().delete([unsafe, safe], total_size=1099)
 
     assert result.deleted == (str(safe_dir),)
     assert len(result.failed) == 1
@@ -131,10 +179,10 @@ def test_trash_strategy_blocks_unsafe_path_and_deletes_safe_one(tmp_path: Path) 
     # freed size reflects only the safe item, not the blocked one
     assert result.total_size == 100
     assert not safe_dir.exists()
+    assert fake_trash == [str(safe_dir)]  # only the safe item was trashed
 
 
-def test_trash_strategy_uses_injected_validator(tmp_path: Path) -> None:
-    trash_root = tmp_path / "trash"
+def test_trash_strategy_uses_injected_validator(tmp_path: Path, fake_trash) -> None:
     link_target = tmp_path / "real"
     link_target.mkdir()
     link = tmp_path / "proj" / "node_modules"
@@ -143,12 +191,11 @@ def test_trash_strategy_uses_injected_validator(tmp_path: Path) -> None:
 
     item = _item(str(link), size=50)
 
-    blocked = TrashStrategy(trash_root=trash_root).delete([item], total_size=50)
+    blocked = TrashStrategy().delete([item], total_size=50)
     assert blocked.deleted == ()
     assert blocked.failed[0].error.count("symbolic link") == 1
 
     allowed = TrashStrategy(
-        trash_root=trash_root,
         validator=SafetyValidator(allow_symlinks=True),
     ).delete([item], total_size=50)
     assert allowed.deleted == (str(link),)
@@ -167,8 +214,7 @@ def test_default_deletion_strategy_blocks_symlinks_by_default(tmp_path: Path) ->
     assert result.failed[0].error.count("symbolic link") == 1
 
 
-def test_default_deletion_strategy_honors_allow_symlinks(tmp_path: Path, monkeypatch) -> None:
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+def test_default_deletion_strategy_honors_allow_symlinks(tmp_path: Path, fake_trash) -> None:
     real = tmp_path / "real"
     real.mkdir()
     link = tmp_path / "node_modules"
@@ -178,3 +224,4 @@ def test_default_deletion_strategy_honors_allow_symlinks(tmp_path: Path, monkeyp
     result = default_deletion_strategy(allow_symlinks=True).delete([item], total_size=100)
 
     assert result.deleted == (str(link),)
+    assert fake_trash == [str(link)]

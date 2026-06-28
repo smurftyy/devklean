@@ -31,6 +31,7 @@ classifiers = [
 ]
 dependencies = [
     "tomli>=2.0.0; python_version < '3.11'",
+    "send2trash>=1.8.2",
 ]
 
 [project.optional-dependencies]

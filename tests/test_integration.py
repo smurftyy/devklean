@@ -38,20 +38,16 @@ def _args(tree: Path, **over) -> Namespace:
     return Namespace(**base)
 
 
-def test_clean_end_to_end_deletes(tmp_path, monkeypatch) -> None:
+def test_clean_end_to_end_deletes(tmp_path, monkeypatch, fake_trash) -> None:
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     tree = _tree(tmp_path)
     nm = tree / "app" / "node_modules"
 
-    code = run_clean(
-        _args(tree),
-        _renderer(),
-        _config(default_yes=True),
-        TrashStrategy(trash_root=tmp_path / "trash"),
-    )
+    code = run_clean(_args(tree), _renderer(), _config(default_yes=True), TrashStrategy())
 
     assert code == 0
-    assert not nm.exists()  # moved to trash
+    assert not nm.exists()  # sent to trash
+    assert fake_trash == [str(nm)]
     # a metadata record was written
     records = MetadataManager(
         storage_dir=tmp_path / "data" / "devklean" / "deletions"
@@ -59,20 +55,18 @@ def test_clean_end_to_end_deletes(tmp_path, monkeypatch) -> None:
     assert len(records.records) == 1
 
 
-def test_clean_dry_run_deletes_nothing(tmp_path, monkeypatch) -> None:
+def test_clean_dry_run_deletes_nothing(tmp_path, monkeypatch, fake_trash) -> None:
     monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
     tree = _tree(tmp_path)
     nm = tree / "app" / "node_modules"
 
     code = run_clean(
-        _args(tree, dry_run=True),
-        _renderer(),
-        _config(default_yes=True),
-        TrashStrategy(trash_root=tmp_path / "trash"),
+        _args(tree, dry_run=True), _renderer(), _config(default_yes=True), TrashStrategy()
     )
 
     assert code == 0
     assert nm.exists()  # untouched
+    assert fake_trash == []
     meta = tmp_path / "data" / "devklean" / "deletions"
     assert not meta.exists() or list(meta.glob("*.json")) == []
 

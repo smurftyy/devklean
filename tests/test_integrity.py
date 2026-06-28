@@ -5,11 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from devklean.deletion.integrity import (
-    IntegrityReport,
-    OrphanedRecord,
-    check_integrity,
-)
+from devklean.deletion.integrity import IntegrityReport, check_integrity
 from devklean.deletion.metadata import CorruptMetadata, MetadataManager
 
 
@@ -84,13 +80,7 @@ def test_load_records_keeps_valid_and_isolates_corrupt(tmp_path: Path) -> None:
 
 
 def test_check_integrity_healthy_store(tmp_path: Path) -> None:
-    trash = tmp_path / "trash" / "node_modules"
-    trash.mkdir(parents=True)
-    _write(
-        tmp_path / "meta",
-        "a.json",
-        _valid_payload(deletion_id="a", trash_path=str(trash)),
-    )
+    _write(tmp_path / "meta", "a.json", _valid_payload(deletion_id="a", trash_path=None))
 
     report = check_integrity(MetadataManager(storage_dir=tmp_path / "meta"))
 
@@ -98,10 +88,24 @@ def test_check_integrity_healthy_store(tmp_path: Path) -> None:
     assert report.healthy
     assert len(report.valid) == 1
     assert report.corrupt == ()
-    assert report.orphaned == ()
 
 
-def test_check_integrity_detects_orphaned_record(tmp_path: Path) -> None:
+def test_check_integrity_reports_corrupt(tmp_path: Path) -> None:
+    meta = tmp_path / "meta"
+    _write(meta, "good.json", _valid_payload(deletion_id="a", trash_path=None))
+    _write(meta, "bad.json", "{nope")
+
+    report = check_integrity(MetadataManager(storage_dir=meta))
+
+    assert not report.healthy
+    assert len(report.corrupt) == 1
+    assert len(report.valid) == 1
+
+
+def test_check_integrity_does_not_treat_missing_trash_as_a_problem(tmp_path: Path) -> None:
+    # Items now go to the native OS trash, which devklean does not track. A
+    # record that references a no-longer-present path is still a valid record;
+    # orphan detection has been removed with the move to send2trash.
     _write(
         tmp_path / "meta",
         "gone.json",
@@ -110,34 +114,5 @@ def test_check_integrity_detects_orphaned_record(tmp_path: Path) -> None:
 
     report = check_integrity(MetadataManager(storage_dir=tmp_path / "meta"))
 
-    assert not report.healthy
-    assert len(report.orphaned) == 1
-    orphan = report.orphaned[0]
-    assert isinstance(orphan, OrphanedRecord)
-    assert "missing" in orphan.reason
-
-
-def test_check_integrity_separates_corrupt_and_orphaned(tmp_path: Path) -> None:
-    meta = tmp_path / "meta"
-    _write(meta, "bad.json", "{nope")
-    _write(
-        meta,
-        "gone.json",
-        _valid_payload(deletion_id="g", trash_path=str(tmp_path / "trash" / "missing")),
-    )
-
-    report = check_integrity(MetadataManager(storage_dir=meta))
-
-    assert len(report.corrupt) == 1
-    assert len(report.orphaned) == 1
-    assert report.valid == ()
-
-
-def test_check_integrity_record_without_trash_is_valid_not_orphaned(tmp_path: Path) -> None:
-    _write(tmp_path / "meta", "a.json", _valid_payload(deletion_id="a", trash_path=None))
-
-    report = check_integrity(MetadataManager(storage_dir=tmp_path / "meta"))
-
     assert report.healthy
     assert len(report.valid) == 1
-    assert report.orphaned == ()

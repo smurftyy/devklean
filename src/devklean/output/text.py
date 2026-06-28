@@ -134,5 +134,5 @@ class TextRenderer:
             plural = "s" if invalid_count != 1 else ""
             self._c.warning(
                 f"Skipped {invalid_count} corrupt metadata record{plural} "
-                f"— run `devclean doctor` to inspect."
+                f"— run `devklean doctor` to inspect."
             )

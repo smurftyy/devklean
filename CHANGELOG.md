@@ -16,19 +16,22 @@ First public pre-release.
 - **Scanning** — discover cleanable directories (`node_modules`, `.venv`,
   `__pycache__`, `dist`, caches, and more) with size reporting; `scan` command
   with `--json` output.
-- **Cleaning** — `clean` command moves items to the system trash (not permanent
-  deletion), with a size summary and confirmation. Supports `--dry-run`,
+- **Cleaning** — `clean` command moves items to the native operating-system
+  trash (Recycle Bin on Windows, Trash on macOS, freedesktop trash on Linux) via
+  `send2trash`, with a size summary and confirmation. Supports `--dry-run`,
   interactive selection (`-i`), `--allow-symlinks`, and `-y/--yes`.
-- **Restore & history** — `restore` recovers trashed items; `history` lists past
-  cleanup operations (timestamp, reclaimed size, strategy, item count) in text
-  or `--json`.
+- **History & recovery** — `history` lists past cleanup operations (timestamp,
+  reclaimed size, strategy, item count) in text or `--json`. Recovery is done
+  through the OS trash UI (the OS owns the trash); `restore` explains how.
 - **Safety layer** — a centralized `SafetyValidator` blocks deletion of the
   filesystem root, home directory, mounted drive roots, protected system
-  directories, and symlinks (opt in with `--allow-symlinks`). Large deletions
+  directories, and symlinks (opt in with `--allow-symlinks`); protected
+  locations reached via a symlink (e.g. macOS `/etc`) are classified as
+  protected and cannot be bypassed with `--allow-symlinks`. Large deletions
   (≥ 1 GiB by default) require typing `DELETE`.
-- **Recovery & integrity** — `doctor` command detects corrupt and orphaned
-  metadata, removing only confirmed-corrupt records after confirmation; reads
-  degrade gracefully and surface warnings.
+- **Integrity** — `doctor` command detects corrupt metadata and removes only
+  confirmed-corrupt records after confirmation; reads degrade gracefully and
+  surface warnings.
 - **Configuration** — TOML config with precedence project (`.devklean.toml`) >
   global (`~/.config/devklean/config.toml`) > built-in defaults; keys for
   `exclude`, `default_yes`, `theme`, `confirm_threshold`, targets, and ignores;

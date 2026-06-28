@@ -56,7 +56,7 @@ def test_configure_logging_is_idempotent(tmp_path, monkeypatch) -> None:
     assert len(handlers) == 1
 
 
-def test_delete_items_logs_deletion(tmp_path, monkeypatch) -> None:
+def test_delete_items_logs_deletion(tmp_path, monkeypatch, fake_trash) -> None:
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     configure_logging()
 
@@ -72,7 +72,7 @@ def test_delete_items_logs_deletion(tmp_path, monkeypatch) -> None:
     delete_items(
         [item],
         100,
-        strategy=TrashStrategy(trash_root=tmp_path / "trash"),
+        strategy=TrashStrategy(),
         metadata_manager=MetadataManager(storage_dir=tmp_path / "meta"),
     )
 

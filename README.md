@@ -11,7 +11,7 @@
 
 ## Why
 
-Development trees accumulate gigabytes of regenerable junk. `devklean` finds it, shows you exactly what it found and how big it is, and removes it **to your system trash** (not `rm -rf`) so a mistaken delete is always recoverable. It refuses to touch dangerous paths, makes large deletions require an explicit typed confirmation, and keeps a history you can restore from.
+Development trees accumulate gigabytes of regenerable junk. `devklean` finds it, shows you exactly what it found and how big it is, and removes it **to your native system trash** — the Recycle Bin on Windows, Trash on macOS, the freedesktop trash on Linux — not `rm -rf`, so a mistaken delete is recoverable from your trash. It refuses to touch dangerous paths, makes large deletions require an explicit typed confirmation, and keeps a history of what it removed.
 
 ## Installation
 
@@ -44,7 +44,7 @@ devklean clean --dry-run
 | --- | --- |
 | `devklean scan [PATH]` | Find cleanable directories and report sizes. Never deletes. |
 | `devklean clean [PATH]` | Scan, then delete (to trash) after confirmation. |
-| `devklean restore` | Interactively restore previously deleted items from the trash. |
+| `devklean restore` | Explain how to recover deleted items from your system trash. |
 | `devklean history` | Show previous cleanup operations (timestamp, size, strategy, item count). |
 | `devklean doctor` | Inspect and repair the deletion metadata store. |
 | `devklean --version` | Print the version. |
@@ -77,9 +77,19 @@ devklean clean -y               # skip the y/N prompt (large deletions still req
 
 ### `restore`
 
+devklean moves items to your operating system's own trash, which the OS owns —
+so recovery is done through your file manager's trash, not through devklean.
+This command just shows you how:
+
 ```bash
-devklean restore   # lists deleted items; pick numbers (or 'a' for all) to restore
+devklean restore   # explains how to recover from the Recycle Bin / Trash
 ```
+
+- **Windows** — open the Recycle Bin and restore the item.
+- **macOS** — open Trash in Finder and "Put Back".
+- **Linux** — open Trash in your file manager and restore.
+
+Run `devklean history` to see what was removed and when.
 
 ### `history`
 
@@ -91,7 +101,7 @@ devklean history --json   # machine-readable
 ### `doctor`
 
 ```bash
-devklean doctor        # report corrupt/orphaned metadata; prompt before removing corrupt records
+devklean doctor        # report corrupt metadata; prompt before removing it
 devklean doctor --yes  # remove corrupt records without prompting
 ```
 
@@ -174,7 +184,7 @@ Logs rotate (5 backups) and are kept entirely separate from terminal output.
 Deletions whose total size meets the `confirm_threshold` (default 1 GiB) require an explicit typed confirmation as an extra guard against large accidental deletes. This gate is intentionally **not** bypassed by `--yes` or `default_yes`; only `--dry-run` skips it.
 
 **Where do deleted files go? Can I get them back?**
-Items are moved to your operating system trash, not permanently deleted. Use `devklean restore` to recover them, or `devklean history` to see what was removed.
+Items are moved to your operating system's native trash (Recycle Bin on Windows, Trash on macOS, the freedesktop trash on Linux), not permanently deleted. Recover them through your file manager's trash UI — devklean does not own that trash and can't move items back. Run `devklean history` to see what was removed, or `devklean restore` for recovery instructions.
 
 **How do I exclude a folder?**
 Add its name to `exclude` (global or project `.devklean.toml`), or an absolute path to `[ignore].paths`. See [Configuration](#configuration).
@@ -185,8 +195,8 @@ Add its name to `exclude` (global or project `.devklean.toml`), or an absolute p
 **How do I turn off colors?**
 Set `NO_COLOR=1`, pipe the output, or set `theme = "mono"` in config.
 
-**Something looks wrong with my history/restore data.**
-Run `devklean doctor` to detect and repair corrupt metadata, and to report orphaned records.
+**Something looks wrong with my history data.**
+Run `devklean doctor` to detect and remove corrupt metadata records.
 
 ## Contributing
 

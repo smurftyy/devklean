@@ -50,7 +50,6 @@ class BaseDeletionStrategy:
             deleted=result.deleted,
             failed=result.failed + blocked_failures,
             total_size=result.total_size,
-            trashed=result.trashed,
         )
 
     def _delete_safe(

@@ -63,7 +63,7 @@ Keep PRs focused and describe the motivation. A short, imperative commit subject
 src/devklean/
   cli/          argument parsing, command dispatch, command handlers
   config/       TOML config loading, precedence, validation
-  deletion/     strategies, safety validator, metadata, integrity, restore
+  deletion/     strategies (send2trash), safety validator, metadata, integrity
   output/       renderers (text/json), console/theme/color, progress widgets
   scanner/      directory traversal and size computation
   logging_setup.py
