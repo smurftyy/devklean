@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 
+import click
+
 from devklean.cli.dispatcher import dispatch
 from devklean.cli.parser import build_parser, resolve_bare_invocation
 from devklean.config import ConfigManager
@@ -62,5 +64,5 @@ def main() -> None:
             sys.exit(exit_code)
     except KeyboardInterrupt:
         # 130 is the Unix convention for a SIGINT-terminated process (128 + 2).
-        print("\nAborted.", file=sys.stderr)
+        click.echo("\nAborted.", file=sys.stderr)
         sys.exit(130)

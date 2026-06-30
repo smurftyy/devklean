@@ -5,11 +5,17 @@ from devklean.cli.confirmation import (
     confirm_large_deletion,
     exceeds_threshold,
 )
-from devklean.deletion import SafetyValidator, delete_items
+from devklean.deletion.safety import SafetyValidator
 from devklean.formatting import format_size, truncate
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
 from devklean.output.sorting import items_by_size_desc
+
+
+def delete_items(*args, **kwargs):
+    from devklean.deletion import delete_items as _delete_items
+
+    return _delete_items(*args, **kwargs)
 
 
 def interactive_ui(stdscr, items: list[CleanableItem], dry_run: bool) -> list[int] | None:

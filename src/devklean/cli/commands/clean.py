@@ -9,9 +9,15 @@ from devklean.cli.confirmation import (
     exceeds_threshold,
 )
 from devklean.config.models import AppConfig
-from devklean.deletion import SafetyValidator, delete_items
+from devklean.deletion.safety import SafetyValidator
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
+
+
+def delete_items(*args, **kwargs):
+    from devklean.deletion import delete_items as _delete_items
+
+    return _delete_items(*args, **kwargs)
 
 
 def _confirm_deletion(
