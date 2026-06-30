@@ -18,3 +18,5 @@ build/
 .ruff_cache/
 .coverage
 htmlcov/
+
+AUDIT.md
