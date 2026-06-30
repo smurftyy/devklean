@@ -10,6 +10,7 @@ These are the Windows-relevant behaviors, so they run on every platform.
 from __future__ import annotations
 
 import io
+import os
 import subprocess
 import sys
 from argparse import Namespace
@@ -52,10 +53,12 @@ def test_tui_module_imports_cold_without_curses() -> None:
     crash every command on Windows) and an import-order/circular-import
     regression that an in-process import would mask.
     """
+    env = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parents[1] / "src")}
     result = subprocess.run(
         [sys.executable, "-c", "import devklean.tui; print(devklean.tui.run_interactive.__name__)"],
         capture_output=True,
         text=True,
+        env=env,
     )
     assert result.returncode == 0, result.stderr
     assert "run_interactive" in result.stdout

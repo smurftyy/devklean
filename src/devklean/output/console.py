@@ -4,6 +4,8 @@ import os
 import sys
 from typing import TextIO
 
+import click
+
 from devklean.output.theme import Palette, get_theme
 
 # Semantic symbols — fixed across every command and renderer.
@@ -73,7 +75,7 @@ class Console:
 
     def _line(self, symbol: str, role: str, message: str) -> None:
         prefix = self.paint(symbol, role)
-        print(f"{prefix} {message}", file=self._stream)
+        click.echo(f"{prefix} {message}", file=self._stream)
 
     def success(self, message: str) -> None:
         self._line(SYM_SUCCESS, "success", message)
@@ -88,7 +90,7 @@ class Console:
         self._line(SYM_INFO, "info", message)
 
     def detail(self, message: str) -> None:
-        print(self.paint(message, "detail"), file=self._stream)
+        click.echo(self.paint(message, "detail"), file=self._stream)
 
     def plain(self, message: str = "") -> None:
-        print(message, file=self._stream)
+        click.echo(message, file=self._stream)
