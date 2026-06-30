@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-30
+
+### Fixed
+
+- Pressing Ctrl+C (e.g. at a `clean` confirmation prompt) now exits cleanly with
+  a short `Aborted.` notice and exit code 130 (the Unix SIGINT convention)
+  instead of dumping a `KeyboardInterrupt` traceback.
+- `doctor` now flags records with an unrecognized `strategy` value as corrupt.
+  Stores containing legacy strategy values (e.g. `"recording"`, `"rec"`) were
+  previously reported as healthy; the only recognized strategy is `"trash"`.
+
 ## [1.0.0] - 2026-06-30
 
 First stable release. No breaking changes to the CLI since `0.1.0`; this
@@ -80,6 +91,7 @@ First public pre-release.
   per-target sizing.
 - **Packaging** — distributable via `pip`/`pipx`; MIT licensed.
 
-[Unreleased]: https://github.com/smurftyy/devklean/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/smurftyy/devklean/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/smurftyy/devklean/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/smurftyy/devklean/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/smurftyy/devklean/releases/tag/v0.1.0

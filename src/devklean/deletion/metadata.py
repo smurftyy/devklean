@@ -10,6 +10,11 @@ from uuid import uuid4
 from devklean.deletion.paths import get_deletion_metadata_dir
 from devklean.models import CleanableItem, DeleteResult
 
+# The only recognized strategy value. Shared with trash.py's STRATEGY_NAME so
+# the write side and this validation can't drift; a record with any other value
+# was written by a removed backend and is treated as corrupt.
+TRASH_STRATEGY = "trash"
+
 
 @dataclass(frozen=True)
 class DeletionMetadataItem:
@@ -100,6 +105,9 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
         and isinstance(schema_version, int)
     ):
         raise ValueError("missing or wrong-typed metadata fields")
+
+    if strategy != TRASH_STRATEGY:
+        raise ValueError(f"unrecognized strategy {strategy!r}")
 
     return DeletionMetadataRecord(
         schema_version=schema_version,
