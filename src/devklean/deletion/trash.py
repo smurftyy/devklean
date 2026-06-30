@@ -4,15 +4,16 @@ from collections.abc import Sequence
 
 from send2trash import send2trash
 
-from devklean.deletion.metadata import MetadataManager
+from devklean.deletion.metadata import TRASH_STRATEGY, MetadataManager
 from devklean.deletion.safety import SafetyValidator
 from devklean.logging_setup import get_logger
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 # The single deletion backend is the native OS trash (Recycle Bin on Windows,
 # ~/.Trash on macOS, the freedesktop trash on Linux) via send2trash. There is
-# only one method, so the name recorded in metadata/history is a literal.
-STRATEGY_NAME = "trash"
+# only one method, so the name recorded in metadata/history is a single shared
+# constant (also used by the integrity check to flag stale strategy values).
+STRATEGY_NAME = TRASH_STRATEGY
 
 
 def delete_items(

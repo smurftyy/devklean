@@ -102,6 +102,35 @@ def test_check_integrity_reports_corrupt(tmp_path: Path) -> None:
     assert len(report.valid) == 1
 
 
+def test_load_records_flags_unrecognized_strategy_as_corrupt(tmp_path: Path) -> None:
+    # Records written by older builds carried strategy values ("recording",
+    # "rec") that no longer name a real deletion backend. The only valid
+    # strategy is "trash"; anything else is semantically corrupt.
+    payload = _valid_payload(deletion_id="a", trash_path=None)
+    payload["deletion"]["strategy"] = "recording"
+    _write(tmp_path, "stale.json", payload)
+
+    result = MetadataManager(storage_dir=tmp_path).load_records()
+
+    assert result.records == ()
+    assert len(result.corrupt) == 1
+    assert "strategy" in result.corrupt[0].reason.lower()
+
+
+def test_check_integrity_flags_unrecognized_strategy(tmp_path: Path) -> None:
+    meta = tmp_path / "meta"
+    _write(meta, "good.json", _valid_payload(deletion_id="a", trash_path=None))
+    stale = _valid_payload(deletion_id="b", trash_path=None)
+    stale["deletion"]["strategy"] = "rec"
+    _write(meta, "stale.json", stale)
+
+    report = check_integrity(MetadataManager(storage_dir=meta))
+
+    assert not report.healthy
+    assert len(report.valid) == 1
+    assert len(report.corrupt) == 1
+
+
 def test_check_integrity_does_not_treat_missing_trash_as_a_problem(tmp_path: Path) -> None:
     # Items now go to the native OS trash, which devklean does not track. A
     # record that references a no-longer-present path is still a valid record;

@@ -30,6 +30,17 @@ def main() -> None:
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
+    try:
+        _run()
+    except KeyboardInterrupt:
+        # Ctrl+C (e.g. at a confirmation prompt) should exit cleanly rather than
+        # dump a traceback. 130 is the Unix convention for a SIGINT-terminated
+        # process (128 + SIGINT's signal number, 2).
+        print("\nAborted.", file=sys.stderr)
+        sys.exit(130)
+
+
+def _run() -> None:
     raw_argv = list(sys.argv)
     argv = resolve_bare_invocation(raw_argv)
 
