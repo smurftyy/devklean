@@ -10,12 +10,10 @@ from uuid import uuid4
 from devklean.deletion.paths import get_deletion_metadata_dir
 from devklean.models import CleanableItem, DeleteResult
 
-# The native OS trash (send2trash) is the only deletion backend, so "trash" is
-# the single recognized strategy value. Records carrying anything else were
-# written by a removed backend and are semantically corrupt. This is the source
-# of truth; trash.py's STRATEGY_NAME re-exports it.
+# The only recognized strategy value. Shared with trash.py's STRATEGY_NAME so
+# the write side and this validation can't drift; a record with any other value
+# was written by a removed backend and is treated as corrupt.
 TRASH_STRATEGY = "trash"
-KNOWN_STRATEGIES = frozenset({TRASH_STRATEGY})
 
 
 @dataclass(frozen=True)
@@ -108,9 +106,7 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
     ):
         raise ValueError("missing or wrong-typed metadata fields")
 
-    # Structure is sound; now validate semantics. A record whose strategy is not
-    # a recognized backend (e.g. legacy "recording"/"rec" values) is corrupt.
-    if strategy not in KNOWN_STRATEGIES:
+    if strategy != TRASH_STRATEGY:
         raise ValueError(f"unrecognized strategy {strategy!r}")
 
     return DeletionMetadataRecord(

@@ -31,42 +31,36 @@ def main() -> None:
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
     try:
-        _run()
+        raw_argv = list(sys.argv)
+        argv = resolve_bare_invocation(raw_argv)
+
+        configure_logging()
+
+        config_manager = ConfigManager()
+        result = config_manager.load_full()
+        config = result.config
+
+        parser = build_parser()
+        args = parser.parse_args(argv[1:])
+        args._config = config
+        config_manager.apply_defaults(args, raw_argv)
+
+        log_invocation(raw_argv, getattr(args, "command", None))
+
+        # Surface config warnings on stderr so stdout/JSON stay clean.
+        if result.warnings:
+            warn_console = Console(
+                stream=sys.stderr, theme=getattr(config.defaults, "theme", "default")
+            )
+            for warning in result.warnings:
+                warn_console.warning(warning)
+
+        renderer = select_renderer(args, config)
+        exit_code = dispatch(args, renderer, config)
+
+        if exit_code != 0:
+            sys.exit(exit_code)
     except KeyboardInterrupt:
-        # Ctrl+C (e.g. at a confirmation prompt) should exit cleanly rather than
-        # dump a traceback. 130 is the Unix convention for a SIGINT-terminated
-        # process (128 + SIGINT's signal number, 2).
+        # 130 is the Unix convention for a SIGINT-terminated process (128 + 2).
         print("\nAborted.", file=sys.stderr)
         sys.exit(130)
-
-
-def _run() -> None:
-    raw_argv = list(sys.argv)
-    argv = resolve_bare_invocation(raw_argv)
-
-    configure_logging()
-
-    config_manager = ConfigManager()
-    result = config_manager.load_full()
-    config = result.config
-
-    parser = build_parser()
-    args = parser.parse_args(argv[1:])
-    args._config = config
-    config_manager.apply_defaults(args, raw_argv)
-
-    log_invocation(raw_argv, getattr(args, "command", None))
-
-    # Surface config warnings on stderr so stdout/JSON stay clean.
-    if result.warnings:
-        warn_console = Console(
-            stream=sys.stderr, theme=getattr(config.defaults, "theme", "default")
-        )
-        for warning in result.warnings:
-            warn_console.warning(warning)
-
-    renderer = select_renderer(args, config)
-    exit_code = dispatch(args, renderer, config)
-
-    if exit_code != 0:
-        sys.exit(exit_code)
