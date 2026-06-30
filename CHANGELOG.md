@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-30
+
+First stable release. No breaking changes to the CLI since `0.1.0`; this
+release marks the API and behavior as stable.
+
+### Added
+
+- A default-command shorthand: running `devklean <path>` (or `devklean` with no
+  arguments) is treated as a `scan`, so the most common operation needs no
+  subcommand.
+- Permission errors encountered while scanning are now tracked and surfaced in
+  `--json` output.
+
+### Changed
+
+- Path resolution now honors `XDG_*` environment variables consistently across
+  log, config, and deletion-metadata paths on all platforms.
+  - Note: if you previously had `XDG_*` variables set, devklean may now resolve
+    these paths to different locations than before; existing logs, config, and
+    metadata in the old locations will not be migrated automatically.
+- Console output is forced to UTF-8 on Windows to render the `✓`/`✗`/`⚠`
+  symbols without raising `UnicodeEncodeError`.
+
 ### Fixed
 
 - Non-interactive commands no longer crash on Windows. The `curses` import (a
@@ -57,5 +80,6 @@ First public pre-release.
   per-target sizing.
 - **Packaging** — distributable via `pip`/`pipx`; MIT licensed.
 
-[Unreleased]: https://github.com/smurftyy/devklean/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/smurftyy/devklean/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/smurftyy/devklean/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/smurftyy/devklean/releases/tag/v0.1.0
