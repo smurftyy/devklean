@@ -7,6 +7,8 @@
 
 **Reclaim disk space by safely cleaning up development artifacts** — `node_modules`, `.venv`, build caches, and other regenerable directories — with a trash-backed safety net so nothing is ever lost to a typo.
 
+![devklean in action](docs/assets/hero.png)
+
 <!-- TODO: insert terminal recording GIF of `devklean clean` here -->
 
 ## Why
