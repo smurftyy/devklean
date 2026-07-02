@@ -100,6 +100,7 @@ def run_interactive(
     dry_run: bool,
     validator: SafetyValidator | None = None,
     *,
+    compress: bool = False,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
     import curses  # Unix-only; imported lazily so this module loads on Windows.
@@ -128,5 +129,5 @@ def run_interactive(
             renderer.aborted()
             return
 
-    result = delete_items(selected, total_size, validator=validator)
+    result = delete_items(selected, total_size, validator=validator, compress=compress)
     renderer.deletion_result(result)

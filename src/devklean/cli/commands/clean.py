@@ -45,6 +45,7 @@ def run_standard(
     dry_run: bool,
     validator: SafetyValidator | None = None,
     *,
+    compress: bool = False,
     default_yes: bool = False,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
@@ -58,7 +59,7 @@ def run_standard(
         renderer.aborted()
         return
 
-    result = delete_items(found, total_size, validator=validator)
+    result = delete_items(found, total_size, validator=validator, compress=compress)
     renderer.deletion_result(result)
 
 
@@ -76,6 +77,7 @@ def run_clean(
     defaults = config.defaults
     default_yes = getattr(args, "yes", False) or getattr(defaults, "default_yes", False)
     confirm_threshold = getattr(defaults, "confirm_threshold", DEFAULT_LARGE_THRESHOLD)
+    compress = getattr(args, "compress", False) or getattr(defaults, "compress", False)
 
     if args.interactive:
         # Interactive mode relies on curses, which is unavailable on Windows.
@@ -97,6 +99,7 @@ def run_clean(
             found,
             args.dry_run,
             validator,
+            compress=compress,
             confirm_threshold=confirm_threshold,
         )
     else:
@@ -105,6 +108,7 @@ def run_clean(
             found,
             args.dry_run,
             validator,
+            compress=compress,
             default_yes=default_yes,
             confirm_threshold=confirm_threshold,
         )

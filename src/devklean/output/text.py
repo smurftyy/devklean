@@ -179,5 +179,9 @@ class TextRenderer:
         c.detail("  • Windows — open the Recycle Bin and restore the item.")
         c.detail("  • macOS   — open Trash in Finder and 'Put Back'.")
         c.detail("  • Linux   — open Trash in your file manager and restore.")
+        c.detail(
+            "If compression was enabled, restore the archive from trash and unpack it "
+            "to the original path."
+        )
         self._println()
         c.detail("Run `devklean history` to see what was removed and when.")

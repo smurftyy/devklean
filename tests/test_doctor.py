@@ -22,7 +22,7 @@ def _meta_dir(tmp_path: Path) -> Path:
 def _valid(directory: Path, name: str, *, trash_path: str | None) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "deletion": {
             "id": name,
             "run_id": "run1",
@@ -130,6 +130,38 @@ def test_doctor_does_not_flag_records_with_missing_trash(tmp_path, monkeypatch, 
     assert "healthy" in out.lower()
     assert "ORPHAN" not in out.upper()
     assert (meta / "gone.json").exists()
+
+
+def test_doctor_accepts_compressed_records(tmp_path, monkeypatch, capsys) -> None:
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    meta = _meta_dir(tmp_path)
+    meta.mkdir(parents=True, exist_ok=True)
+    (meta / "compressed.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 4,
+                "deletion": {
+                    "id": "compressed",
+                    "run_id": "run1",
+                    "timestamp": "2026-06-28T14:00:00+00:00",
+                    "strategy": "trash",
+                },
+                "item": {
+                    "original_path": "/tmp/compressed",
+                    "display_name": "compressed",
+                    "size": 100,
+                },
+                "archive": {"path": "/tmp/compressed.zip", "format": "zip"},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    code = run_doctor(_args(), TextRenderer(), None)
+
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "healthy" in out.lower()
 
 
 def test_doctor_command_end_to_end(tmp_path) -> None:

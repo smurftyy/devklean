@@ -70,6 +70,7 @@ devklean clean --dry-run        # show what *would* be deleted; delete nothing
 devklean clean -i               # interactive: pick items in a TUI (Linux/macOS only)
 devklean clean --allow-symlinks # permit deleting symlinked targets (blocked by default)
 devklean clean -y               # skip the y/N prompt (large deletions still require typing DELETE)
+devklean clean --compress       # zip eligible directories before sending them to trash
 ```
 
 | Flag | Meaning |
@@ -78,6 +79,7 @@ devklean clean -y               # skip the y/N prompt (large deletions still req
 | `-i`, `--interactive` | Choose items in a terminal UI (SPACE select, A all, D none, ENTER confirm, Q quit). **Linux/macOS only** — see [Platform support](#platform-support). |
 | `--allow-symlinks` | Allow deleting symbolic links. Off by default (symlinks are blocked). |
 | `-y`, `--yes` | Skip the standard confirmation. Deletions over the size threshold still require typing `DELETE`. |
+| `--compress` | Zip eligible directories into a sibling archive before trashing them, shrinking their footprint in trash. Off by default — see [Compression](#compression). |
 
 ### `restore`
 
@@ -92,6 +94,11 @@ devklean restore   # explains how to recover from the Recycle Bin / Trash
 - **Windows** — open the Recycle Bin and restore the item.
 - **macOS** — open Trash in Finder and "Put Back".
 - **Linux** — open Trash in your file manager and restore.
+
+If the item was deleted with `--compress`, what lands in trash is a `.zip`
+archive rather than the original directory — restore the archive from trash,
+then unpack it to the original path yourself. devklean does not decompress
+automatically (yet).
 
 Run `devklean history` to see what was removed and when.
 
@@ -163,6 +170,7 @@ exclude = ["node_modules", ".git"]
 dry_run = false
 interactive = false
 default_yes = false          # skip the y/N prompt (the large-deletion DELETE gate still applies)
+compress = false             # zip eligible directories before trashing them
 theme = "default"            # "default" or "mono"
 confirm_threshold = 1073741824   # bytes; deletions >= this require typing DELETE (default 1 GiB)
 path = "."
@@ -180,6 +188,22 @@ directories = ["vendor"]              # directory names to skip
 Scalar keys from the project file override the global file; list keys (`exclude`, `ignore.*`) are unioned. Unknown keys and malformed TOML produce a warning rather than a crash.
 
 Color follows the `theme` setting and is automatically disabled when output is piped or `NO_COLOR` is set.
+
+## Compression
+
+Common artifacts (`node_modules`, `.venv`, `.next`, build caches) often compress
+to a fraction of their on-disk size. Pass `--compress` (or set `compress = true`
+in config) and devklean will zip each eligible directory into a sibling
+`<name>.zip` archive and send *that* to trash instead of the raw directory —
+shrinking how much space the deletion actually occupies in trash before it's
+emptied.
+
+- Only applies to directories (not symlinks); files are trashed as-is.
+- The archive path and format are recorded in deletion metadata, so `history`
+  and `doctor` see compressed deletions the same as uncompressed ones.
+- Off by default, so existing scripts and habits aren't surprised by archives
+  appearing in trash.
+- Restoring a compressed item is manual today — see [`restore`](#restore).
 
 ## Logs
 
