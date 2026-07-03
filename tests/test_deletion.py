@@ -29,6 +29,32 @@ def test_delete_items_delegates_to_send2trash(tmp_path: Path, fake_trash) -> Non
     assert result.total_size == 1024
 
 
+def test_delete_items_compresses_directory_before_trashing(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+    for index in range(64):
+        (source / f"file-{index}.txt").write_text("A" * 2048, encoding="utf-8")
+
+    trashed: list[str] = []
+
+    def _record_only(path) -> None:
+        trashed.append(str(path))
+
+    monkeypatch.setattr("devklean.deletion.trash.send2trash", _record_only)
+
+    item = CleanableItem(str(source), "node_modules", 64 * 2048, "Node.js")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    result = delete_items([item], item.size, metadata_manager=manager, compress=True)
+
+    assert result.deleted == (str(source),)
+    assert trashed == [str(source.with_suffix(".zip"))]
+    assert not source.exists()
+    archive = source.with_suffix(".zip")
+    assert archive.exists()
+    assert archive.stat().st_size < item.size
+
+
 def test_delete_items_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
     source = tmp_path / "workspace" / "node_modules"
     source.mkdir(parents=True)
@@ -174,12 +200,37 @@ def test_delete_items_records_only_successes(tmp_path: Path, monkeypatch) -> Non
     payload = json.loads(records[0].read_text(encoding="utf-8"))
 
     assert result.deleted == ("/tmp/a",)
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 4
     assert payload["deletion"]["strategy"] == "trash"
     assert isinstance(payload["deletion"]["run_id"], str) and payload["deletion"]["run_id"]
     assert payload["item"]["original_path"] == "/tmp/a"
     assert payload["item"]["display_name"] == "A"
     assert payload["item"]["size"] == 10
+
+
+def test_metadata_manager_records_archive_details(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "metadata"
+    manager = MetadataManager(storage_dir=storage_dir)
+    item = CleanableItem("/tmp/a", "a", 10, "A")
+    result = DeleteResult(deleted=("/tmp/a",), failed=(), total_size=10)
+
+    manager.record_successes(
+        [item],
+        result,
+        "trash",
+        archives={
+            "/tmp/a": {
+                "path": "/tmp/a.zip",
+                "format": "zip",
+            }
+        },
+    )
+
+    records = sorted(storage_dir.glob("*.json"))
+    payload = json.loads(records[0].read_text(encoding="utf-8"))
+
+    assert payload["schema_version"] == 4
+    assert payload["archive"] == {"path": "/tmp/a.zip", "format": "zip"}
 
 
 def test_metadata_manager_skips_failed_deletions(tmp_path: Path) -> None:

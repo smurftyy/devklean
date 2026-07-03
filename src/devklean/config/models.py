@@ -13,6 +13,7 @@ DEFAULT_CONFIRM_THRESHOLD = 1024**3  # 1 GiB
 class DefaultsConfig:
     dry_run: bool = False
     interactive: bool = False
+    compress: bool = False
     path: str = "."
     default_yes: bool = False
     theme: str = "default"

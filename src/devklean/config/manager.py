@@ -20,6 +20,7 @@ _KNOWN_TOP_LEVEL = {"defaults", "targets", "ignore", "exclude"}
 _KNOWN_DEFAULTS = {
     "dry_run",
     "interactive",
+    "compress",
     "path",
     "default_yes",
     "theme",
@@ -83,6 +84,8 @@ class ConfigManager:
                 args.dry_run = config.defaults.dry_run
             if "-i" not in raw_argv and "--interactive" not in raw_argv:
                 args.interactive = config.defaults.interactive
+            if "--compress" not in raw_argv:
+                args.compress = config.defaults.compress
 
         if getattr(args, "path", None) == "." and not _explicit_path_provided(raw_argv):
             args.path = os.path.expanduser(config.defaults.path)
@@ -149,6 +152,7 @@ class ConfigManager:
         merged: dict[str, Any] = {
             "dry_run": base.dry_run,
             "interactive": base.interactive,
+            "compress": base.compress,
             "path": base.path,
             "default_yes": base.default_yes,
             "theme": base.theme,
@@ -161,6 +165,8 @@ class ConfigManager:
             for key in ("dry_run", "interactive", "default_yes"):
                 if key in section:
                     merged[key] = bool(section[key])
+            if "compress" in section:
+                merged["compress"] = bool(section["compress"])
             if "path" in section:
                 merged["path"] = str(section["path"])
             if "theme" in section:

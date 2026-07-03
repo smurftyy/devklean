@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--compress` flag (and matching `compress` config default) for `clean`: when
+  set, eligible directories are zipped into a sibling archive before being
+  sent to trash, shrinking the footprint of large artifacts like
+  `node_modules` or `.venv`. Metadata records the archive path and format
+  (schema version 4); restoring a compressed item currently requires
+  unpacking the archive by hand after pulling it out of trash.
 ## [1.0.2] - 2026-07-01
 
 ### Changed

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 from send2trash import send2trash
 
-from devklean.deletion.metadata import TRASH_STRATEGY, MetadataManager
+from devklean.deletion.compression import compress_directory
+from devklean.deletion.metadata import TRASH_STRATEGY, DeletionArchive, MetadataManager
 from devklean.deletion.safety import SafetyValidator
 from devklean.logging_setup import get_logger
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
@@ -22,6 +24,7 @@ def delete_items(
     validator: SafetyValidator | None = None,
     metadata_manager: MetadataManager | None = None,
     dry_run: bool = False,
+    compress: bool = False,
 ) -> DeleteResult:
     """Validate, then move safe items to the native OS trash via ``send2trash``.
 
@@ -56,9 +59,15 @@ def delete_items(
 
     deleted: list[str] = []
     failures: list[DeleteFailure] = []
+    archives: dict[str, DeletionArchive] = {}
     for item in safe:
         try:
-            send2trash(item.path)
+            trash_path = item.path
+            if compress and _should_compress(item):
+                archive = compress_directory(Path(item.path))
+                archives[item.path] = DeletionArchive(path=archive.path, format=archive.format)
+                trash_path = archive.path
+            send2trash(trash_path)
             deleted.append(item.path)
         except OSError as exc:
             # TrashPermissionError subclasses OSError; ENOENT/EACCES and
@@ -85,5 +94,10 @@ def delete_items(
     )
 
     manager = metadata_manager or MetadataManager()
-    manager.record_successes(items, result, STRATEGY_NAME)
+    manager.record_successes(items, result, STRATEGY_NAME, archives=archives)
     return result
+
+
+def _should_compress(item: CleanableItem) -> bool:
+    source = Path(item.path)
+    return source.is_dir() and not source.is_symlink()

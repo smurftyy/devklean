@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 from uuid import uuid4
 
 from devklean.deletion.paths import get_deletion_metadata_dir
@@ -14,6 +14,7 @@ from devklean.models import CleanableItem, DeleteResult
 # the write side and this validation can't drift; a record with any other value
 # was written by a removed backend and is treated as corrupt.
 TRASH_STRATEGY = "trash"
+SCHEMA_VERSION = 4
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,18 @@ class DeletionMetadataItem:
 
 
 @dataclass(frozen=True)
+class DeletionArchive:
+    path: str
+    format: str
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "path": self.path,
+            "format": self.format,
+        }
+
+
+@dataclass(frozen=True)
 class DeletionMetadataRecord:
     schema_version: int
     deletion_id: str
@@ -38,9 +51,10 @@ class DeletionMetadataRecord:
     timestamp: str
     strategy: str
     item: DeletionMetadataItem
+    archive: DeletionArchive | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload = {
             "schema_version": self.schema_version,
             "deletion": {
                 "id": self.deletion_id,
@@ -50,6 +64,9 @@ class DeletionMetadataRecord:
             },
             "item": self.item.to_dict(),
         }
+        if self.archive is not None:
+            payload["archive"] = self.archive.to_dict()
+        return payload
 
 
 @dataclass(frozen=True)
@@ -89,6 +106,7 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
     original_path = item.get("original_path")
     display_name = item.get("display_name")
     size = item.get("size")
+    archive_data = data.get("archive")
 
     # Records predating the schema_version field are treated as v1. Any integer
     # version is accepted as-is; there are no migrations yet.
@@ -106,6 +124,16 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
     ):
         raise ValueError("missing or wrong-typed metadata fields")
 
+    archive: DeletionArchive | None = None
+    if archive_data is not None:
+        if not isinstance(archive_data, dict):
+            raise ValueError("missing or invalid 'archive' section")
+        archive_path = archive_data.get("path")
+        archive_format = archive_data.get("format")
+        if not isinstance(archive_path, str) or not isinstance(archive_format, str):
+            raise ValueError("missing or wrong-typed archive fields")
+        archive = DeletionArchive(path=archive_path, format=archive_format)
+
     if strategy != TRASH_STRATEGY:
         raise ValueError(f"unrecognized strategy {strategy!r}")
 
@@ -120,6 +148,7 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
             display_name=display_name,
             size=size,
         ),
+        archive=archive,
     )
 
 
@@ -174,6 +203,7 @@ class MetadataManager:
         items: Sequence[CleanableItem],
         result: DeleteResult,
         strategy: str,
+        archives: Mapping[str, DeletionArchive | Mapping[str, str]] | None = None,
     ) -> None:
         deleted_paths = set(result.deleted)
         if not deleted_paths:
@@ -183,13 +213,17 @@ class MetadataManager:
 
         run_id = uuid4().hex
         timestamp = datetime.now(timezone.utc).isoformat()
+        archives = archives or {}
 
         for item in items:
             if item.path not in deleted_paths:
                 continue
 
+            archive_value = archives.get(item.path)
+            archive = _coerce_archive(archive_value)
+
             record = DeletionMetadataRecord(
-                schema_version=3,
+                schema_version=SCHEMA_VERSION,
                 deletion_id=uuid4().hex,
                 run_id=run_id,
                 timestamp=timestamp,
@@ -199,8 +233,21 @@ class MetadataManager:
                     display_name=item.display_label,
                     size=item.size,
                 ),
+                archive=archive,
             )
             stamp = record.timestamp.replace(":", "").replace("+00:00", "Z")
             filename = f"{stamp}_{record.deletion_id}.json"
             path = self._storage_dir / filename
             path.write_text(json.dumps(record.to_dict(), indent=2) + "\n", encoding="utf-8")
+
+
+def _coerce_archive(value: DeletionArchive | Mapping[str, str] | None) -> DeletionArchive | None:
+    if value is None:
+        return None
+    if isinstance(value, DeletionArchive):
+        return value
+    path = value.get("path")
+    format_name = value.get("format")
+    if not isinstance(path, str) or not isinstance(format_name, str):
+        raise ValueError("archive metadata must contain string path and format")
+    return DeletionArchive(path=path, format=format_name)

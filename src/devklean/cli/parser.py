@@ -37,6 +37,11 @@ def _add_clean_arguments(parser: argparse.ArgumentParser) -> None:
         help="Show what would be deleted without deleting anything",
     )
     parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Compress eligible directories into zip archives before trashing them",
+    )
+    parser.add_argument(
         "-i",
         "--interactive",
         action="store_true",

@@ -24,6 +24,7 @@ def test_restore_explains_native_trash_recovery(capsys) -> None:
     # points the user at the per-platform recovery path and at history
     assert "recycle bin" in out
     assert "history" in out
+    assert "archive" in out
 
 
 def test_restore_uses_injected_renderer() -> None:

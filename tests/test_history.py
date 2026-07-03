@@ -31,7 +31,7 @@ def _stored(
     deletion_id: str = "d0",
 ) -> StoredDeletionMetadata:
     record = DeletionMetadataRecord(
-        schema_version=3,
+        schema_version=4,
         deletion_id=deletion_id,
         run_id=run_id,
         timestamp=timestamp,
@@ -181,7 +181,7 @@ def test_text_renderer_history_corrupt_note_points_to_doctor(capsys) -> None:
 def _write_metadata(directory: Path, *, deletion_id: str, run_id, size: int) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "deletion": {
             "id": deletion_id,
             "run_id": run_id,

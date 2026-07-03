@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from devklean.cli.parser import default_command_for_flags, resolve_bare_invocation
+from devklean.cli.parser import build_parser, default_command_for_flags, resolve_bare_invocation
 
 
 def test_bare_invocation_defaults_to_clean() -> None:
@@ -55,3 +55,10 @@ def test_default_command_for_flags() -> None:
     assert default_command_for_flags(["--dry-run", "."]) == "scan"
     assert default_command_for_flags(["--dry-run", "-i"]) == "clean"
     assert default_command_for_flags(["-i"]) == "clean"
+
+
+def test_clean_parser_accepts_compress_flag() -> None:
+    args = build_parser().parse_args(["clean", "--compress"])
+
+    assert args.command == "clean"
+    assert args.compress is True
