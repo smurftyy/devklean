@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `node_modules` or `.venv`. Metadata records the archive path and format
   (schema version 4); restoring a compressed item currently requires
   unpacking the archive by hand after pulling it out of trash.
+## [1.0.2] - 2026-07-01
+
+### Changed
+
+- Replaced `print()` calls in the console layer with `click.echo()` for improved
+  Unicode and Windows terminal compatibility.
+- Fixed `src/devklean/__main__.py` to correctly import `main` from
+  `devklean.cli.main`.
+- Made package `__init__.py` imports lazy to avoid pulling in `send2trash`
+  during unrelated imports.
+- Added `click` as a runtime dependency.
+- Updated Windows guard test to work in subprocesses with `PYTHONPATH=src`.
 
 ## [1.0.1] - 2026-06-30
 
@@ -100,7 +112,8 @@ First public pre-release.
   per-target sizing.
 - **Packaging** — distributable via `pip`/`pipx`; MIT licensed.
 
-[Unreleased]: https://github.com/smurftyy/devklean/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/smurftyy/devklean/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/smurftyy/devklean/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/smurftyy/devklean/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/smurftyy/devklean/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/smurftyy/devklean/releases/tag/v0.1.0
