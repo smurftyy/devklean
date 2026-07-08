@@ -4,11 +4,12 @@ from typing import Sequence
 
 from devklean.deletion.history import HistoryOperation
 from devklean.deletion.integrity import IntegrityReport
-from devklean.formatting import format_size, format_timestamp
+from devklean.formatting import format_size, format_timestamp, truncate
 from devklean.models import CleanableItem, DeleteResult
 from devklean.output.console import SYM_ERROR, SYM_SUCCESS, Console
 from devklean.output.sorting import items_by_size_desc
 from devklean.signatures import ArtifactSignature
+from devklean.signatures.analysis import AnalysisReport
 
 
 class TextRenderer:
@@ -190,6 +191,65 @@ class TextRenderer:
         c.warning(path)
         c.detail("  not recognized — no signature in the registry for this directory name.")
         c.detail("  no risk or confidence verdict is given for unrecognized paths.")
+        self._println()
+
+    # --- analyze ---
+
+    def analysis_report(self, report: AnalysisReport, *, verbose: bool = False) -> None:
+        c = self._console
+        self._println()
+        self._println(f"{c.paint('devklean analyze', 'bold')} {c.paint(report.root, 'detail')}")
+        self._println()
+
+        self._println(c.paint("RECOGNIZED — safe to remove (per signature registry)", "bold"))
+        if not report.recognized:
+            c.detail("  none")
+        else:
+            self._println(f"  {'TYPE':<18} {'SIZE':>10}  {'RISK':<8} {'ECOSYSTEM':<28} STALENESS")
+            self._println(c.paint("  " + "─" * 100, "detail"))
+            ordered = sorted(report.recognized, key=lambda rc: rc.item.size, reverse=True)
+            for rc in ordered:
+                self._println(
+                    f"  {c.paint(f'{rc.item.display_label:<18}', 'detail')} "
+                    f"{format_size(rc.item.size):>10}  "
+                    f"{rc.signature.risk.value:<8} "
+                    f"{truncate(rc.signature.ecosystem, 28):<28} "
+                    f"{rc.staleness.detail}"
+                )
+        self._println()
+
+        self._println(c.paint("NOT RECOGNIZED — skipped (no signature registry entry)", "bold"))
+        if not report.unrecognized:
+            c.detail("  none")
+        else:
+            for item in report.unrecognized:
+                c.detail(f"  {item.display_label:<18} {item.path}")
+        self._println()
+
+        self._println(c.paint("STRUCTURAL", "bold"))
+        if not report.lockfile_conflicts:
+            c.detail("  no structural issues found")
+        else:
+            for conflict in report.lockfile_conflicts:
+                c.warning(
+                    f"  conflicting lockfiles in {conflict.project_root}: "
+                    f"{', '.join(conflict.lockfiles)}"
+                )
+        self._println()
+
+        score = report.health.score
+        role = "success" if score >= 70 else "warning" if score >= 40 else "error"
+        self._println(c.paint("WORKSPACE HEALTH: ", "bold") + c.paint(f"{score}/100", role))
+        if verbose:
+            inputs = report.health.inputs
+            c.detail(f"  formula: {report.health.formula}")
+            c.detail(
+                "  inputs: "
+                f"recognized_weighted_size={inputs.recognized_weighted_size:.0f} "
+                f"recognized_total_size={inputs.recognized_total_size} "
+                f"unrecognized_total_size={inputs.unrecognized_total_size} "
+                f"lockfile_conflicts={inputs.lockfile_conflicts}"
+            )
         self._println()
 
     # --- restore ---

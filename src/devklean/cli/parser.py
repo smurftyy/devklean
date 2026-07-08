@@ -5,9 +5,22 @@ import argparse
 from devklean._version import __version__
 
 COMMAND_NAMES = frozenset(
-    {"scan", "clean", "history", "doctor", "stats", "restore", "explain", "config", "plugins"}
+    {
+        "scan",
+        "clean",
+        "history",
+        "doctor",
+        "stats",
+        "restore",
+        "explain",
+        "analyze",
+        "config",
+        "plugins",
+    }
 )
-IMPLEMENTED_COMMANDS = frozenset({"scan", "clean", "history", "doctor", "restore", "explain"})
+IMPLEMENTED_COMMANDS = frozenset(
+    {"scan", "clean", "history", "doctor", "restore", "explain", "analyze"}
+)
 RESERVED_COMMANDS = frozenset({"stats", "config", "plugins"})
 GLOBAL_OPTIONS = frozenset({"-h", "--help", "--version"})
 
@@ -91,6 +104,17 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
     explain_parser.add_argument(
         "path",
         help="Path to a directory to look up in the signature registry",
+    )
+
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        help="Analyze cleanable directories using the artifact-signature registry",
+    )
+    _add_path_argument(analyze_parser)
+    analyze_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show the workspace-health formula and its raw inputs",
     )
 
     history_parser = subparsers.add_parser(
