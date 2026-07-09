@@ -32,9 +32,7 @@ def detect_lockfile_conflicts(project_root: str) -> LockfileConflict | None:
     "correct" or which package manager is actually in use.
     """
     for group in _CONFLICTING_LOCKFILE_GROUPS:
-        present = tuple(
-            name for name in group if os.path.isfile(os.path.join(project_root, name))
-        )
+        present = tuple(name for name in group if os.path.isfile(os.path.join(project_root, name)))
         if len(present) >= 2:
             return LockfileConflict(project_root=project_root, lockfiles=present)
     return None

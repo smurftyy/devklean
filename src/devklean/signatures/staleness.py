@@ -49,12 +49,16 @@ class StalenessResult:
 
 def estimate_staleness(project_root: str) -> StalenessResult:
     """Resolve a staleness signal for ``project_root``, git first, then mtime."""
-    return _from_git(project_root) or _from_source_mtime(project_root) or StalenessResult(
-        known=False,
-        source=None,
-        last_activity=None,
-        days_since=None,
-        detail="no reliable signal (no git repository and no source files found)",
+    return (
+        _from_git(project_root)
+        or _from_source_mtime(project_root)
+        or StalenessResult(
+            known=False,
+            source=None,
+            last_activity=None,
+            days_since=None,
+            detail="no reliable signal (no git repository and no source files found)",
+        )
     )
 
 

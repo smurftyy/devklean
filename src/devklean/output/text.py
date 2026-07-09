@@ -274,6 +274,5 @@ class TextRenderer:
         )
         self._println()
         c.detail(
-            "Run `devklean history` to see what was removed, when, and whether it was "
-            "compressed."
+            "Run `devklean history` to see what was removed, when, and whether it was compressed."
         )
