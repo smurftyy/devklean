@@ -66,8 +66,12 @@ class ArtifactSignature:
     rationale: str
 
     def matches(self, path: str) -> bool:
-        """True if ``path``'s basename is this signature's directory name."""
-        return os.path.basename(os.path.normpath(path)) == self.dir_name
+        """True if ``path`` resolves to this exact signature.
+
+        Delegates to ``match_signature`` so there is one place that defines
+        how a path resolves to a directory-name key.
+        """
+        return match_signature(path) is self
 
 
 # Seeded 1:1 from devklean.config.defaults.DEFAULT_TARGETS — the directory

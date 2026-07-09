@@ -52,7 +52,8 @@ def _add_clean_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--compress",
         action="store_true",
-        help="Compress eligible directories into zip archives before trashing them",
+        help="Compress eligible directories into a .tar.gz (or .tar.zst) archive "
+        "before trashing them",
     )
     parser.add_argument(
         "-i",

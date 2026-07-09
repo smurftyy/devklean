@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
+from devklean.cli.commands.common import resolve_root
 from devklean.signatures import match_signature
 
 if TYPE_CHECKING:
@@ -21,7 +21,10 @@ def run_explain(args, renderer: TextRenderer, config) -> int:
     report, not a scannable result set, so it never needs the JSON scan/history
     payload shape.
     """
-    path = os.path.abspath(args.path)
+    path = resolve_root(args.path, renderer)
+    if path is None:
+        return 1
+
     signature = match_signature(path)
 
     if signature is None:

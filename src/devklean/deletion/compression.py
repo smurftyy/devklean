@@ -64,25 +64,31 @@ class CompressionResult:
         return self.archive_path.stat().st_size
 
 
-def compress_path(source: Path, *, format: str = GZIP_FORMAT) -> CompressionResult:
+def compress_path(source: Path, *, compress_format: str = GZIP_FORMAT) -> CompressionResult:
     """Archive ``source`` into a new temp file. Never reads-then-deletes;
     ``source`` is left completely untouched, success or failure.
 
     The archive is written next to ``source`` (same filesystem as the
     original, so a later move never has to cross devices) with a name that
     cannot collide with a real scan target. On any failure while writing,
-    the partial temp file is removed and the exception propagates — callers
-    must not treat a raised exception here as "maybe partially done".
+    the partial temp file is removed and the exception propagates. An
+    ``OSError`` propagates as-is; anything else (``tarfile.TarError``,
+    a zstd encoder error, ...) is normalized to
+    ``CompressionVerificationError`` so callers only ever have to handle
+    those two exception types to treat this "maybe partially done" case
+    the same as any other compression failure.
     """
-    resolved_format = _resolve_format(format)
+    resolved_format = _resolve_format(compress_format)
     archive_path = _new_temp_archive_path(source, resolved_format)
 
     try:
         with _open_archive_for_write(archive_path, resolved_format) as tar:
             file_count = _add_tree(tar, source)
-    except Exception:
+    except Exception as exc:
         archive_path.unlink(missing_ok=True)
-        raise
+        if isinstance(exc, OSError):
+            raise
+        raise CompressionVerificationError(f"failed to build archive for {source}: {exc}") from exc
 
     original_size = get_dir_size(str(source))
     return CompressionResult(
@@ -103,22 +109,35 @@ def verify_archive(result: CompressionResult) -> None:
     """
     file_count = 0
     total_size = 0
+    sizes_by_name: dict[str, int] = {}
 
     try:
         with _open_archive_for_read(result.archive_path, result.format) as tar:
             for member in tar:
-                if not member.isreg():
+                if member.isreg():
+                    extracted = tar.extractfile(member)
+                    if extracted is None:
+                        raise CompressionVerificationError(
+                            f"archive entry {member.name!r} in {result.archive_path} "
+                            "could not be read back"
+                        )
+                    while extracted.read(_VERIFY_CHUNK_SIZE):
+                        pass
+                    file_count += 1
+                    total_size += member.size
+                    sizes_by_name[member.name] = member.size
+                elif member.islnk():
+                    # A hardlink to an earlier regular member: tar stores it
+                    # as a zero-size reference rather than duplicating the
+                    # data, but it represents a distinct source file with
+                    # identical content, so it must still count as one file
+                    # of the linked-to size — the same way get_dir_size
+                    # counts each hardlinked directory entry independently.
+                    linked_size = sizes_by_name.get(member.linkname, 0)
+                    file_count += 1
+                    total_size += linked_size
+                else:
                     continue
-                extracted = tar.extractfile(member)
-                if extracted is None:
-                    raise CompressionVerificationError(
-                        f"archive entry {member.name!r} in {result.archive_path} "
-                        "could not be read back"
-                    )
-                while extracted.read(_VERIFY_CHUNK_SIZE):
-                    pass
-                file_count += 1
-                total_size += member.size
     except CompressionVerificationError:
         raise
     except Exception as exc:
@@ -146,17 +165,17 @@ def verify_archive(result: CompressionResult) -> None:
 # --- internals ---
 
 
-def _resolve_format(format: str) -> str:
-    if format == ZSTD_FORMAT and not _zstd_available():
+def _resolve_format(compress_format: str) -> str:
+    if compress_format == ZSTD_FORMAT and not _zstd_available():
         get_logger().warning(
             "zstd compression requested but the 'zstandard' package is not installed "
             "(pip install 'devklean[zstd]'); falling back to gzip"
         )
         return GZIP_FORMAT
-    if format not in SUPPORTED_FORMATS:
-        get_logger().warning("unknown compression format %r; falling back to gzip", format)
+    if compress_format not in SUPPORTED_FORMATS:
+        get_logger().warning("unknown compression format %r; falling back to gzip", compress_format)
         return GZIP_FORMAT
-    return format
+    return compress_format
 
 
 def _zstd_available() -> bool:
@@ -178,12 +197,17 @@ def _new_temp_archive_path(source: Path, resolved_format: str) -> Path:
 
 
 def _add_tree(tar: tarfile.TarFile, source: Path) -> int:
-    """Add ``source`` (recursively) to ``tar``. Returns the regular-file count."""
+    """Add ``source`` (recursively) to ``tar``. Returns the file count
+    (regular files plus hardlinks to an already-added file)."""
     count = 0
 
     def _count_filter(tarinfo: tarfile.TarInfo) -> tarfile.TarInfo:
         nonlocal count
-        if tarinfo.isreg():
+        # A hardlink to an already-added file becomes an LNKTYPE member (tar
+        # stores it as a zero-size reference, not duplicate data) but is
+        # still a distinct source file — see the matching count in
+        # verify_archive.
+        if tarinfo.isreg() or tarinfo.islnk():
             count += 1
         return tarinfo
 
@@ -195,7 +219,10 @@ def _add_tree(tar: tarfile.TarFile, source: Path) -> int:
 def _open_archive_for_write(archive_path: Path, resolved_format: str) -> Iterator[tarfile.TarFile]:
     with ExitStack() as stack:
         if resolved_format == ZSTD_FORMAT:
-            zstandard = _import_zstandard()
+            # _resolve_format only returns ZSTD_FORMAT when the import already
+            # succeeded, so this is guaranteed to be available here.
+            import zstandard
+
             raw = stack.enter_context(archive_path.open("wb"))
             writer = stack.enter_context(zstandard.ZstdCompressor().stream_writer(raw))
             tar = stack.enter_context(tarfile.open(fileobj=writer, mode="w|"))
@@ -208,20 +235,14 @@ def _open_archive_for_write(archive_path: Path, resolved_format: str) -> Iterato
 def _open_archive_for_read(archive_path: Path, resolved_format: str) -> Iterator[tarfile.TarFile]:
     with ExitStack() as stack:
         if resolved_format == ZSTD_FORMAT:
-            zstandard = _import_zstandard()
+            # The archive was written with this same format, so if it got
+            # this far the import already succeeded once (see
+            # _open_archive_for_write).
+            import zstandard
+
             raw = stack.enter_context(archive_path.open("rb"))
             reader = stack.enter_context(zstandard.ZstdDecompressor().stream_reader(raw))
             tar = stack.enter_context(tarfile.open(fileobj=reader, mode="r|"))
         else:
             tar = stack.enter_context(tarfile.open(archive_path, mode="r:gz"))
         yield tar
-
-
-def _import_zstandard():
-    try:
-        import zstandard
-    except ImportError as exc:  # pragma: no cover - resolved_format guarantees availability
-        raise CompressionVerificationError(
-            "zstd archive requires the 'zstandard' package (pip install 'devklean[zstd]')"
-        ) from exc
-    return zstandard

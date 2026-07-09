@@ -9,7 +9,7 @@ from pathlib import Path
 from devklean.cli.commands.clean import run_standard
 from devklean.deletion import delete_items
 from devklean.deletion.compression import CompressionVerificationError
-from devklean.deletion.metadata import MetadataManager
+from devklean.deletion.metadata import DeletionArchive, MetadataManager
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
@@ -322,12 +322,7 @@ def test_metadata_manager_records_archive_details(tmp_path: Path) -> None:
         [item],
         result,
         "trash",
-        archives={
-            "/tmp/a": {
-                "path": "/tmp/a.zip",
-                "format": "zip",
-            }
-        },
+        archives={"/tmp/a": DeletionArchive(path="/tmp/a.zip", format="zip")},
     )
 
     records = sorted(storage_dir.glob("*.json"))

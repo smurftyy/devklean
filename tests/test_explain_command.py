@@ -57,6 +57,14 @@ def test_explain_unrecognized_path_gives_no_verdict(tmp_path: Path, capsys) -> N
     assert re.search(r"\b0\.\d{2}\b", out) is None
 
 
+def test_explain_invalid_directory_returns_error(tmp_path: Path, capsys) -> None:
+    code = run_explain(_args(str(tmp_path / "does-not-exist")), TextRenderer(), None)
+
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "not a directory" in out
+
+
 def test_explain_unrecognized_path_matches_no_registry_entry(tmp_path: Path) -> None:
     mystery = tmp_path / "mystery_dir"
     mystery.mkdir()

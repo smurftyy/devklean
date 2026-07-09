@@ -46,6 +46,8 @@ devklean clean --dry-run
 | --- | --- |
 | `devklean scan [PATH]` | Find cleanable directories and report sizes. Never deletes. |
 | `devklean clean [PATH]` | Scan, then delete (to trash) after confirmation. |
+| `devklean analyze [PATH]` | Scan and report a signature-backed analysis: risk, staleness, structural issues, workspace health. |
+| `devklean explain PATH` | Explain what a single directory is, using the artifact-signature registry. |
 | `devklean restore` | Explain how to recover deleted items from your system trash. |
 | `devklean history` | Show previous cleanup operations (timestamp, size, strategy, item count). |
 | `devklean doctor` | Inspect and repair the deletion metadata store. |
@@ -80,6 +82,30 @@ devklean clean --compress       # compress eligible directories (gzip) before se
 | `--allow-symlinks` | Allow deleting symbolic links. Off by default (symlinks are blocked). |
 | `-y`, `--yes` | Skip the standard confirmation. Deletions over the size threshold still require typing `DELETE`. |
 | `--compress` | Compress eligible directories into a sibling archive before trashing them, shrinking their footprint in trash. Off by default — see [Compression](#compression). |
+
+### `analyze`
+
+```bash
+devklean analyze                 # analyze the current directory
+devklean analyze ~/projects      # analyze a specific path
+devklean analyze --verbose       # also print the workspace-health formula and its raw inputs
+```
+
+Scans like `scan`/`clean`, then cross-references every cleanable directory against the artifact-signature registry (the same data `explain` uses) and buckets each into:
+
+- **Recognized** — has a registry entry: shown with its risk tier, ecosystem, and a staleness estimate for its parent project (last git commit date, falling back to the newest source-file mtime).
+- **Not recognized** — no registry entry, so no risk/confidence verdict is given.
+
+It also flags project roots with conflicting package-manager lockfiles (e.g. both `package-lock.json` and `pnpm-lock.yaml` present) and prints an overall **workspace health** score from 0-100, weighted by recognized directories' risk and size. `analyze` never deletes anything — it's a read-only report.
+
+### `explain`
+
+```bash
+devklean explain node_modules          # explain a directory relative to the current path
+devklean explain ~/code/app/.next      # explain an absolute path
+```
+
+Looks up the given path's directory name in the artifact-signature registry and prints what it is: ecosystem, what generates it, how to regenerate it, risk tier, confidence, and the rationale behind the entry. An unrecognized directory gets no fabricated risk or confidence verdict.
 
 ### `restore`
 
@@ -145,7 +171,8 @@ Delete 3 directories (~834.0 MB)? (y/N) y
 ## Platform support
 
 `devklean` runs on **Linux, macOS, and Windows**. All core commands — `scan`,
-`clean`, `history`, `doctor`, and `restore` — work on every platform.
+`clean`, `analyze`, `explain`, `history`, `doctor`, and `restore` — work on
+every platform.
 
 **Known limitation:** interactive mode (`-i` / `--interactive`) is **Linux/macOS
 only** for now. It is built on Python's `curses` module, which is not available

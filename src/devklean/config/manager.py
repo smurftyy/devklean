@@ -228,6 +228,8 @@ def _explicit_path_provided(argv: list[str]) -> bool:
         "doctor",
         "stats",
         "restore",
+        "explain",
+        "analyze",
         "config",
         "plugins",
     }

@@ -150,7 +150,7 @@ def _send_to_trash(
         return None
 
     source = Path(item.path)
-    result = compress_path(source, format=compress_format)
+    result = compress_path(source, compress_format=compress_format)
     try:
         verify_archive(result)
     except CompressionVerificationError:

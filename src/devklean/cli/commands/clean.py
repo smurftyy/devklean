@@ -87,8 +87,9 @@ def run_clean(
     default_yes = getattr(args, "yes", False) or getattr(defaults, "default_yes", False)
     confirm_threshold = getattr(defaults, "confirm_threshold", DEFAULT_LARGE_THRESHOLD)
     compress = getattr(args, "compress", False) or getattr(defaults, "compress", False)
-    # Not exposed as CLI flags (per the original issue, --compress itself is
-    # the only opt-in surface); config-only knobs read straight from defaults.
+    # compress_min_size/compress_format are config-only knobs, not CLI flags:
+    # --compress is the only opt-in surface on the command line, so these two
+    # are read straight from defaults rather than duplicated as flags.
     compress_min_size = getattr(defaults, "compress_min_size", DEFAULT_COMPRESS_MIN_SIZE)
     compress_format = getattr(defaults, "compress_format", DEFAULT_COMPRESS_FORMAT)
 

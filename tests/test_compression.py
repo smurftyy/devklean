@@ -11,8 +11,10 @@ failure mode.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import replace
 from pathlib import Path
+from tarfile import TarError
 
 import pytest
 
@@ -101,6 +103,45 @@ def test_verify_archive_raises_on_size_mismatch(tmp_path: Path) -> None:
     result.archive_path.unlink()
 
 
+def test_compress_path_handles_hardlinked_files(tmp_path: Path) -> None:
+    """A directory containing hardlinks (e.g. an npm/pnpm install cache) must
+    still verify: tar collapses repeat hardlinks into zero-size reference
+    members, so a naive size/count check that doesn't account for that would
+    reject a perfectly valid archive."""
+    source = tmp_path / "node_modules"
+    source.mkdir()
+    (source / "a.txt").write_text("hello" * 100, encoding="utf-8")
+    try:
+        os.link(source / "a.txt", source / "b.txt")
+    except OSError:
+        pytest.skip("filesystem does not support hardlinks")
+
+    result = compress_path(source)
+
+    assert result.file_count == 2
+    assert result.original_size == 2 * (source / "a.txt").stat().st_size
+    verify_archive(result)  # must not raise
+
+    result.archive_path.unlink()
+
+
+def test_compress_path_normalizes_non_os_errors(tmp_path: Path, monkeypatch) -> None:
+    source = tmp_path / "node_modules"
+    _make_tree(source)
+
+    def _boom(*args, **kwargs):
+        raise TarError("simulated tar corruption")
+
+    monkeypatch.setattr("tarfile.TarFile.add", _boom)
+
+    with pytest.raises(CompressionVerificationError):
+        compress_path(source)
+
+    assert source.exists()
+    assert (source / "a.txt").exists()
+    assert list(tmp_path.glob(".node_modules-*")) == []
+
+
 def test_compress_path_cleans_up_temp_file_on_failure(tmp_path: Path, monkeypatch) -> None:
     source = tmp_path / "node_modules"
     _make_tree(source)
@@ -123,7 +164,7 @@ def test_zstd_format_round_trips_with_real_zstandard(tmp_path: Path) -> None:
     source = tmp_path / "dist"
     _make_tree(source)
 
-    result = compress_path(source, format="zstd")
+    result = compress_path(source, compress_format="zstd")
 
     assert result.format == "zstd"
     verify_archive(result)
@@ -139,7 +180,7 @@ def test_zstd_falls_back_to_gzip_when_package_missing(
     monkeypatch.setattr("devklean.deletion.compression._zstd_available", lambda: False)
 
     with caplog.at_level(logging.WARNING, logger="devklean"):
-        result = compress_path(source, format="zstd")
+        result = compress_path(source, compress_format="zstd")
 
     assert result.format == "gzip"
     assert any("falling back to gzip" in record.message for record in caplog.records)

@@ -237,7 +237,7 @@ class MetadataManager:
         items: Sequence[CleanableItem],
         result: DeleteResult,
         strategy: str,
-        archives: Mapping[str, DeletionArchive | Mapping[str, object]] | None = None,
+        archives: Mapping[str, DeletionArchive] | None = None,
     ) -> None:
         deleted_paths = set(result.deleted)
         if not deleted_paths:
@@ -253,8 +253,7 @@ class MetadataManager:
             if item.path not in deleted_paths:
                 continue
 
-            archive_value = archives.get(item.path)
-            archive = _coerce_archive(archive_value)
+            archive = archives.get(item.path)
 
             record = DeletionMetadataRecord(
                 schema_version=SCHEMA_VERSION,
@@ -273,26 +272,3 @@ class MetadataManager:
             filename = f"{stamp}_{record.deletion_id}.json"
             path = self._storage_dir / filename
             path.write_text(json.dumps(record.to_dict(), indent=2) + "\n", encoding="utf-8")
-
-
-def _coerce_archive(
-    value: DeletionArchive | Mapping[str, object] | None,
-) -> DeletionArchive | None:
-    if value is None:
-        return None
-    if isinstance(value, DeletionArchive):
-        return value
-    path = value.get("path")
-    format_name = value.get("format")
-    if not isinstance(path, str) or not isinstance(format_name, str):
-        raise ValueError("archive metadata must contain string path and format")
-    compressed = value.get("compressed", True)
-    original_size = value.get("original_size")
-    compressed_size = value.get("compressed_size")
-    return DeletionArchive(
-        path=path,
-        format=format_name,
-        compressed=bool(compressed),
-        original_size=original_size if isinstance(original_size, int) else None,
-        compressed_size=compressed_size if isinstance(compressed_size, int) else None,
-    )

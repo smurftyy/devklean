@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING
 
+from devklean.cli.commands.common import resolve_root
 from devklean.config.models import AppConfig
 from devklean.scanner.scanner import scan_tree
 from devklean.signatures.analysis import analyze_candidates
@@ -21,9 +21,8 @@ def run_analyze(args, renderer: TextRenderer, config: AppConfig) -> int:
     render its own report (recognized/unrecognized buckets, structural
     checks, health score), even over an empty candidate list.
     """
-    root = os.path.abspath(args.path)
-    if not os.path.isdir(root):
-        renderer.invalid_directory(root)
+    root = resolve_root(args.path, renderer)
+    if root is None:
         return 1
 
     scan_report = scan_tree(root, settings=config.scan_settings)
@@ -31,5 +30,5 @@ def run_analyze(args, renderer: TextRenderer, config: AppConfig) -> int:
         renderer.permission_warnings(scan_report.permission_errors)
 
     analysis = analyze_candidates(root, scan_report.items)
-    renderer.analysis_report(analysis, verbose=getattr(args, "verbose", False))
+    renderer.analyze_report(analysis, verbose=getattr(args, "verbose", False))
     return 0

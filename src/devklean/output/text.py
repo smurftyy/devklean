@@ -195,7 +195,7 @@ class TextRenderer:
 
     # --- analyze ---
 
-    def analysis_report(self, report: AnalysisReport, *, verbose: bool = False) -> None:
+    def analyze_report(self, report: AnalysisReport, *, verbose: bool = False) -> None:
         c = self._console
         self._println()
         self._println(f"{c.paint('devklean analyze', 'bold')} {c.paint(report.root, 'detail')}")
@@ -273,6 +273,4 @@ class TextRenderer:
             "files back, e.g. `tar -xf <name>.tar.gz` (or `tar --zstd -xf <name>.tar.zst`)."
         )
         self._println()
-        c.detail(
-            "Run `devklean history` to see what was removed, when, and whether it was compressed."
-        )
+        c.detail("Run `devklean history` to see what was removed and when.")
