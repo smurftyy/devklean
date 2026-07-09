@@ -23,6 +23,8 @@ def test_config_manager_uses_defaults_when_missing(tmp_path: Path) -> None:
     assert config.defaults.dry_run is False
     assert config.defaults.interactive is False
     assert config.defaults.compress is False
+    assert config.defaults.compress_min_size == 10 * 1024 * 1024
+    assert config.defaults.compress_format == "gzip"
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX absolute path literals")
@@ -34,6 +36,8 @@ def test_config_manager_merges_user_settings(tmp_path: Path) -> None:
 dry_run = true
 interactive = true
 compress = true
+compress_min_size = 2097152
+compress_format = "zstd"
 path = "~/projects"
 
 [targets]
@@ -61,6 +65,8 @@ directories = [".git"]
     assert config.defaults.dry_run is True
     assert config.defaults.interactive is True
     assert config.defaults.compress is True
+    assert config.defaults.compress_min_size == 2097152
+    assert config.defaults.compress_format == "zstd"
     assert config.defaults.path == "~/projects"
 
 

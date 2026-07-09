@@ -25,7 +25,7 @@ pipx install devklean
 pip install devklean
 ```
 
-Requires Python 3.8+. Runtime dependencies are `send2trash` (used for all deletions) and `tomli` (only on Python < 3.11).
+Requires Python 3.8+. Runtime dependencies are `send2trash` (used for all deletions) and `tomli` (only on Python < 3.11). `zstandard` is an optional dependency, only needed for `compress_format = "zstd"` — see [Compression](#compression).
 
 ## Quick start
 
@@ -70,7 +70,7 @@ devklean clean --dry-run        # show what *would* be deleted; delete nothing
 devklean clean -i               # interactive: pick items in a TUI (Linux/macOS only)
 devklean clean --allow-symlinks # permit deleting symlinked targets (blocked by default)
 devklean clean -y               # skip the y/N prompt (large deletions still require typing DELETE)
-devklean clean --compress       # zip eligible directories before sending them to trash
+devklean clean --compress       # compress eligible directories (gzip) before sending them to trash
 ```
 
 | Flag | Meaning |
@@ -79,7 +79,7 @@ devklean clean --compress       # zip eligible directories before sending them t
 | `-i`, `--interactive` | Choose items in a terminal UI (SPACE select, A all, D none, ENTER confirm, Q quit). **Linux/macOS only** — see [Platform support](#platform-support). |
 | `--allow-symlinks` | Allow deleting symbolic links. Off by default (symlinks are blocked). |
 | `-y`, `--yes` | Skip the standard confirmation. Deletions over the size threshold still require typing `DELETE`. |
-| `--compress` | Zip eligible directories into a sibling archive before trashing them, shrinking their footprint in trash. Off by default — see [Compression](#compression). |
+| `--compress` | Compress eligible directories into a sibling archive before trashing them, shrinking their footprint in trash. Off by default — see [Compression](#compression). |
 
 ### `restore`
 
@@ -95,9 +95,10 @@ devklean restore   # explains how to recover from the Recycle Bin / Trash
 - **macOS** — open Trash in Finder and "Put Back".
 - **Linux** — open Trash in your file manager and restore.
 
-If the item was deleted with `--compress`, what lands in trash is a `.zip`
-archive rather than the original directory — restore the archive from trash,
-then unpack it to the original path yourself. devklean does not decompress
+If the item was deleted with `--compress`, what lands in trash is a `.tar.gz`
+(or `.tar.zst`, if `compress_format = "zstd"`) archive rather than the original
+directory — restore the archive from trash, then extract it to the original
+path yourself, e.g. `tar -xf <name>.tar.gz`. devklean does not decompress
 automatically (yet).
 
 Run `devklean history` to see what was removed and when.
@@ -170,7 +171,9 @@ exclude = ["node_modules", ".git"]
 dry_run = false
 interactive = false
 default_yes = false          # skip the y/N prompt (the large-deletion DELETE gate still applies)
-compress = false             # zip eligible directories before trashing them
+compress = false             # compress eligible directories before trashing them
+compress_min_size = 10485760 # bytes; directories smaller than this are trashed uncompressed (default 10 MiB)
+compress_format = "gzip"     # "gzip" (stdlib, default) or "zstd" (needs the devklean[zstd] extra)
 theme = "default"            # "default" or "mono"
 confirm_threshold = 1073741824   # bytes; deletions >= this require typing DELETE (default 1 GiB)
 path = "."
@@ -193,17 +196,45 @@ Color follows the `theme` setting and is automatically disabled when output is p
 
 Common artifacts (`node_modules`, `.venv`, `.next`, build caches) often compress
 to a fraction of their on-disk size. Pass `--compress` (or set `compress = true`
-in config) and devklean will zip each eligible directory into a sibling
-`<name>.zip` archive and send *that* to trash instead of the raw directory —
-shrinking how much space the deletion actually occupies in trash before it's
-emptied.
+in config) and devklean will archive each eligible directory into a sibling
+`.tar.gz` (gzip, the default) before sending *that* to trash instead of the raw
+directory — shrinking how much space the deletion actually occupies in trash
+before it's emptied. `zstd` is available as an opt-in format (see below) for a
+better compression ratio.
 
-- Only applies to directories (not symlinks); files are trashed as-is.
-- The archive path and format are recorded in deletion metadata, so `history`
-  and `doctor` see compressed deletions the same as uncompressed ones.
+Compression is always ordered for safety: devklean compresses to a temp
+archive, verifies it (test-extracts every entry and cross-checks the file
+count and total uncompressed size against the source), and only *after*
+`send2trash` confirms the archive is in the trash does it remove the original
+directory. If compression or verification fails, or `send2trash` itself fails,
+the original directory is left completely untouched and the error is reported
+per-item — nothing is ever partially deleted.
+
+- Only applies to directories (not symlinks) at or above `compress_min_size`
+  (default 10 MiB); smaller directories and files are trashed as-is, since the
+  archive/verify overhead rarely pays for itself below that size.
+- The archive path, format, original size, and compressed size are recorded in
+  deletion metadata, so `history` and `doctor` see compressed deletions the
+  same as uncompressed ones.
 - Off by default, so existing scripts and habits aren't surprised by archives
   appearing in trash.
 - Restoring a compressed item is manual today — see [`restore`](#restore).
+
+### zstd (optional)
+
+```bash
+pip install 'devklean[zstd]'
+```
+
+```toml
+[defaults]
+compress = true
+compress_format = "zstd"
+```
+
+If `compress_format = "zstd"` is set but the `zstandard` package isn't
+installed, devklean logs a warning and falls back to gzip rather than
+crashing.
 
 ## Logs
 

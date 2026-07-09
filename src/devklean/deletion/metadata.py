@@ -14,7 +14,9 @@ from devklean.models import CleanableItem, DeleteResult
 # the write side and this validation can't drift; a record with any other value
 # was written by a removed backend and is treated as corrupt.
 TRASH_STRATEGY = "trash"
-SCHEMA_VERSION = 4
+# Bumped for the archive dict gaining compressed/original_size/compressed_size;
+# the new fields are optional on read so schema_version <= 4 records still parse.
+SCHEMA_VERSION = 5
 
 
 @dataclass(frozen=True)
@@ -35,12 +37,25 @@ class DeletionMetadataItem:
 class DeletionArchive:
     path: str
     format: str
+    # True whenever this record was produced by the compress-before-trash path
+    # (the only path that creates DeletionArchive today). Kept as an explicit
+    # field rather than inferred from archive-presence so future callers can
+    # record an archive without implying it was compressed.
+    compressed: bool = True
+    original_size: int | None = None
+    compressed_size: int | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return {
+        payload: dict[str, object] = {
             "path": self.path,
             "format": self.format,
+            "compressed": self.compressed,
         }
+        if self.original_size is not None:
+            payload["original_size"] = self.original_size
+        if self.compressed_size is not None:
+            payload["compressed_size"] = self.compressed_size
+        return payload
 
 
 @dataclass(frozen=True)
@@ -132,7 +147,26 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
         archive_format = archive_data.get("format")
         if not isinstance(archive_path, str) or not isinstance(archive_format, str):
             raise ValueError("missing or wrong-typed archive fields")
-        archive = DeletionArchive(path=archive_path, format=archive_format)
+
+        # compressed/original_size/compressed_size postdate schema_version 4;
+        # older records simply lack them, so absence is not an error.
+        compressed = archive_data.get("compressed", True)
+        original_size = archive_data.get("original_size")
+        compressed_size = archive_data.get("compressed_size")
+        if not isinstance(compressed, bool):
+            raise ValueError("archive 'compressed' field must be a boolean")
+        if original_size is not None and not isinstance(original_size, int):
+            raise ValueError("archive 'original_size' field must be an integer")
+        if compressed_size is not None and not isinstance(compressed_size, int):
+            raise ValueError("archive 'compressed_size' field must be an integer")
+
+        archive = DeletionArchive(
+            path=archive_path,
+            format=archive_format,
+            compressed=compressed,
+            original_size=original_size,
+            compressed_size=compressed_size,
+        )
 
     if strategy != TRASH_STRATEGY:
         raise ValueError(f"unrecognized strategy {strategy!r}")
@@ -203,7 +237,7 @@ class MetadataManager:
         items: Sequence[CleanableItem],
         result: DeleteResult,
         strategy: str,
-        archives: Mapping[str, DeletionArchive | Mapping[str, str]] | None = None,
+        archives: Mapping[str, DeletionArchive | Mapping[str, object]] | None = None,
     ) -> None:
         deleted_paths = set(result.deleted)
         if not deleted_paths:
@@ -241,7 +275,9 @@ class MetadataManager:
             path.write_text(json.dumps(record.to_dict(), indent=2) + "\n", encoding="utf-8")
 
 
-def _coerce_archive(value: DeletionArchive | Mapping[str, str] | None) -> DeletionArchive | None:
+def _coerce_archive(
+    value: DeletionArchive | Mapping[str, object] | None,
+) -> DeletionArchive | None:
     if value is None:
         return None
     if isinstance(value, DeletionArchive):
@@ -250,4 +286,13 @@ def _coerce_archive(value: DeletionArchive | Mapping[str, str] | None) -> Deleti
     format_name = value.get("format")
     if not isinstance(path, str) or not isinstance(format_name, str):
         raise ValueError("archive metadata must contain string path and format")
-    return DeletionArchive(path=path, format=format_name)
+    compressed = value.get("compressed", True)
+    original_size = value.get("original_size")
+    compressed_size = value.get("compressed_size")
+    return DeletionArchive(
+        path=path,
+        format=format_name,
+        compressed=bool(compressed),
+        original_size=original_size if isinstance(original_size, int) else None,
+        compressed_size=compressed_size if isinstance(compressed_size, int) else None,
+    )

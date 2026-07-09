@@ -5,6 +5,7 @@ from devklean.cli.confirmation import (
     confirm_large_deletion,
     exceeds_threshold,
 )
+from devklean.config.models import DEFAULT_COMPRESS_FORMAT, DEFAULT_COMPRESS_MIN_SIZE
 from devklean.deletion.safety import SafetyValidator
 from devklean.formatting import format_size, truncate
 from devklean.models import CleanableItem
@@ -101,6 +102,8 @@ def run_interactive(
     validator: SafetyValidator | None = None,
     *,
     compress: bool = False,
+    compress_min_size: int = DEFAULT_COMPRESS_MIN_SIZE,
+    compress_format: str = DEFAULT_COMPRESS_FORMAT,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
     import curses  # Unix-only; imported lazily so this module loads on Windows.
@@ -129,5 +132,12 @@ def run_interactive(
             renderer.aborted()
             return
 
-    result = delete_items(selected, total_size, validator=validator, compress=compress)
+    result = delete_items(
+        selected,
+        total_size,
+        validator=validator,
+        compress=compress,
+        compress_min_size=compress_min_size,
+        compress_format=compress_format,
+    )
     renderer.deletion_result(result)
