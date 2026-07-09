@@ -190,10 +190,12 @@ def test_delete_items_surfaces_error_when_original_removal_fails_after_trash(
     assert result.failed[0].path == str(source)
 
     error = result.failed[0].error
+    # Distinct from an ordinary failure: says the archive made it to trash...
     assert "compressed archive was trashed" in error
-    assert "could not be removed" in error
+    # ...names the actual reason (proves {exc} was interpolated, not hardcoded)...
     assert "simulated: directory busy" in error
-    assert "please remove it manually" in error
+    # ...and tells the user what to do about it.
+    assert "remove it manually" in error
 
     # Distinct from a verify/send2trash failure: the archive really did make
     # it to (fake) trash and must not be rolled back — it's the only

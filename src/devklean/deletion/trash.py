@@ -169,7 +169,7 @@ def _send_to_trash(
     except OSError as exc:
         raise OSError(
             f"compressed archive was trashed, but the original directory {source} "
-            f"could not be removed: {exc} — please remove it manually"
+            f"could not be removed ({exc}); remove it manually to reclaim the disk space"
         ) from exc
 
     return DeletionArchive(
