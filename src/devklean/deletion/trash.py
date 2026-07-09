@@ -168,8 +168,8 @@ def _send_to_trash(
         shutil.rmtree(source)
     except OSError as exc:
         raise OSError(
-            f"archive is safely in the trash, but removing the original directory "
-            f"{source} afterward failed ({exc}); the original is still on disk"
+            f"compressed archive was trashed, but the original directory {source} "
+            f"could not be removed: {exc} — please remove it manually"
         ) from exc
 
     return DeletionArchive(

@@ -159,6 +159,56 @@ def test_delete_items_leaves_original_intact_when_send2trash_fails(
     assert list((tmp_path / "workspace").glob(".node_modules-*")) == []
 
 
+def test_delete_items_surfaces_error_when_original_removal_fails_after_trash(
+    tmp_path: Path, fake_trash, monkeypatch
+) -> None:
+    """One step later still: send2trash of the archive succeeds (the data is
+    genuinely safe), but the final shutil.rmtree(source) fails (e.g. a file
+    inside is briefly locked). This must not be swallowed or reported as a
+    plain success — it's a distinct outcome (archive safely trashed, original
+    left behind) and the caller/CLI must be told plainly, not silently."""
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+    (source / "a.txt").write_text("A" * 2048, encoding="utf-8")
+    original_size = sum(f.stat().st_size for f in source.rglob("*") if f.is_file())
+
+    def _boom(path) -> None:
+        raise OSError("simulated: directory busy")
+
+    monkeypatch.setattr("shutil.rmtree", _boom)
+
+    item = CleanableItem(str(source), "node_modules", original_size, "Node.js")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    result = delete_items(
+        [item], item.size, metadata_manager=manager, compress=True, compress_min_size=0
+    )
+
+    # Not a silent success: the item is a reported failure, not a deletion.
+    assert result.deleted == ()
+    assert len(result.failed) == 1
+    assert result.failed[0].path == str(source)
+
+    error = result.failed[0].error
+    assert "compressed archive was trashed" in error
+    assert "could not be removed" in error
+    assert "simulated: directory busy" in error
+    assert "please remove it manually" in error
+
+    # Distinct from a verify/send2trash failure: the archive really did make
+    # it to (fake) trash and must not be rolled back — it's the only
+    # recoverable copy left once the original couldn't be removed.
+    assert len(fake_trash) == 1
+    assert fake_trash[0].endswith(".tar.gz")
+
+    # The original is genuinely still there — nothing was silently lost.
+    assert source.exists()
+    assert (source / "a.txt").exists()
+
+    # A failed item is never recorded as a successful deletion.
+    assert manager.load_records().records == ()
+
+
 def test_delete_items_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
     source = tmp_path / "workspace" / "node_modules"
     source.mkdir(parents=True)
