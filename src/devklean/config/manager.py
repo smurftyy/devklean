@@ -21,6 +21,8 @@ _KNOWN_DEFAULTS = {
     "dry_run",
     "interactive",
     "compress",
+    "compress_min_size",
+    "compress_format",
     "path",
     "default_yes",
     "theme",
@@ -153,6 +155,8 @@ class ConfigManager:
             "dry_run": base.dry_run,
             "interactive": base.interactive,
             "compress": base.compress,
+            "compress_min_size": base.compress_min_size,
+            "compress_format": base.compress_format,
             "path": base.path,
             "default_yes": base.default_yes,
             "theme": base.theme,
@@ -167,6 +171,13 @@ class ConfigManager:
                     merged[key] = bool(section[key])
             if "compress" in section:
                 merged["compress"] = bool(section["compress"])
+            if "compress_min_size" in section:
+                try:
+                    merged["compress_min_size"] = int(section["compress_min_size"])
+                except (TypeError, ValueError):
+                    pass
+            if "compress_format" in section:
+                merged["compress_format"] = str(section["compress_format"])
             if "path" in section:
                 merged["path"] = str(section["path"])
             if "theme" in section:

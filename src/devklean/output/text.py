@@ -262,9 +262,18 @@ class TextRenderer:
         c.detail("  • Windows — open the Recycle Bin and restore the item.")
         c.detail("  • macOS   — open Trash in Finder and 'Put Back'.")
         c.detail("  • Linux   — open Trash in your file manager and restore.")
+        self._println()
         c.detail(
-            "If compression was enabled, restore the archive from trash and unpack it "
-            "to the original path."
+            "If it was deleted with --compress, what's sitting in the trash is a "
+            "compressed archive (.tar.gz, or .tar.zst if zstd was used) — not the "
+            "original directory."
+        )
+        c.detail(
+            "After restoring the archive from trash, extract it yourself to get the "
+            "files back, e.g. `tar -xf <name>.tar.gz` (or `tar --zstd -xf <name>.tar.zst`)."
         )
         self._println()
-        c.detail("Run `devklean history` to see what was removed and when.")
+        c.detail(
+            "Run `devklean history` to see what was removed, when, and whether it was "
+            "compressed."
+        )
