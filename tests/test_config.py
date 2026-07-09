@@ -22,6 +22,9 @@ def test_config_manager_uses_defaults_when_missing(tmp_path: Path) -> None:
     assert config.ignored_directories == ()
     assert config.defaults.dry_run is False
     assert config.defaults.interactive is False
+    assert config.defaults.compress is False
+    assert config.defaults.compress_min_size == 10 * 1024 * 1024
+    assert config.defaults.compress_format == "gzip"
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="POSIX absolute path literals")
@@ -32,6 +35,9 @@ def test_config_manager_merges_user_settings(tmp_path: Path) -> None:
 [defaults]
 dry_run = true
 interactive = true
+compress = true
+compress_min_size = 2097152
+compress_format = "zstd"
 path = "~/projects"
 
 [targets]
@@ -58,6 +64,9 @@ directories = [".git"]
     assert config.ignored_directories == (".git",)
     assert config.defaults.dry_run is True
     assert config.defaults.interactive is True
+    assert config.defaults.compress is True
+    assert config.defaults.compress_min_size == 2097152
+    assert config.defaults.compress_format == "zstd"
     assert config.defaults.path == "~/projects"
 
 
@@ -98,7 +107,10 @@ directories = ["vendor"]
 
 def test_apply_defaults_respects_explicit_cli_flags(tmp_path: Path) -> None:
     config_path = tmp_path / "config.toml"
-    config_path.write_text("[defaults]\ndry_run = true\ninteractive = true\n", encoding="utf-8")
+    config_path.write_text(
+        "[defaults]\ndry_run = true\ninteractive = true\ncompress = true\n",
+        encoding="utf-8",
+    )
     manager = ConfigManager(config_path=config_path)
     config = manager.load()
 
@@ -107,6 +119,7 @@ def test_apply_defaults_respects_explicit_cli_flags(tmp_path: Path) -> None:
         path = "."
         dry_run = True
         interactive = False
+        compress = False
         _config = config
 
     args = Args()
@@ -114,6 +127,7 @@ def test_apply_defaults_respects_explicit_cli_flags(tmp_path: Path) -> None:
 
     assert args.dry_run is True
     assert args.interactive is True
+    assert args.compress is True
 
 
 def test_scan_honors_excluded_and_custom_targets(tmp_path: Path) -> None:

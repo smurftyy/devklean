@@ -25,7 +25,7 @@ pipx install devklean
 pip install devklean
 ```
 
-Requires Python 3.8+. Runtime dependencies are `send2trash` (used for all deletions) and `tomli` (only on Python < 3.11).
+Requires Python 3.8+. Runtime dependencies are `send2trash` (used for all deletions) and `tomli` (only on Python < 3.11). `zstandard` is an optional dependency, only needed for `compress_format = "zstd"` — see [Compression](#compression).
 
 ## Quick start
 
@@ -46,6 +46,8 @@ devklean clean --dry-run
 | --- | --- |
 | `devklean scan [PATH]` | Find cleanable directories and report sizes. Never deletes. |
 | `devklean clean [PATH]` | Scan, then delete (to trash) after confirmation. |
+| `devklean analyze [PATH]` | Scan and report a signature-backed analysis: risk, staleness, structural issues, workspace health. |
+| `devklean explain PATH` | Explain what a single directory is, using the artifact-signature registry. |
 | `devklean restore` | Explain how to recover deleted items from your system trash. |
 | `devklean history` | Show previous cleanup operations (timestamp, size, strategy, item count). |
 | `devklean doctor` | Inspect and repair the deletion metadata store. |
@@ -70,6 +72,7 @@ devklean clean --dry-run        # show what *would* be deleted; delete nothing
 devklean clean -i               # interactive: pick items in a TUI (Linux/macOS only)
 devklean clean --allow-symlinks # permit deleting symlinked targets (blocked by default)
 devklean clean -y               # skip the y/N prompt (large deletions still require typing DELETE)
+devklean clean --compress       # compress eligible directories (gzip) before sending them to trash
 ```
 
 | Flag | Meaning |
@@ -78,6 +81,31 @@ devklean clean -y               # skip the y/N prompt (large deletions still req
 | `-i`, `--interactive` | Choose items in a terminal UI (SPACE select, A all, D none, ENTER confirm, Q quit). **Linux/macOS only** — see [Platform support](#platform-support). |
 | `--allow-symlinks` | Allow deleting symbolic links. Off by default (symlinks are blocked). |
 | `-y`, `--yes` | Skip the standard confirmation. Deletions over the size threshold still require typing `DELETE`. |
+| `--compress` | Compress eligible directories into a sibling archive before trashing them, shrinking their footprint in trash. Off by default — see [Compression](#compression). |
+
+### `analyze`
+
+```bash
+devklean analyze                 # analyze the current directory
+devklean analyze ~/projects      # analyze a specific path
+devklean analyze --verbose       # also print the workspace-health formula and its raw inputs
+```
+
+Scans like `scan`/`clean`, then cross-references every cleanable directory against the artifact-signature registry (the same data `explain` uses) and buckets each into:
+
+- **Recognized** — has a registry entry: shown with its risk tier, ecosystem, and a staleness estimate for its parent project (last git commit date, falling back to the newest source-file mtime).
+- **Not recognized** — no registry entry, so no risk/confidence verdict is given.
+
+It also flags project roots with conflicting package-manager lockfiles (e.g. both `package-lock.json` and `pnpm-lock.yaml` present) and prints an overall **workspace health** score from 0-100, weighted by recognized directories' risk and size. `analyze` never deletes anything — it's a read-only report.
+
+### `explain`
+
+```bash
+devklean explain node_modules          # explain a directory relative to the current path
+devklean explain ~/code/app/.next      # explain an absolute path
+```
+
+Looks up the given path's directory name in the artifact-signature registry and prints what it is: ecosystem, what generates it, how to regenerate it, risk tier, confidence, and the rationale behind the entry. An unrecognized directory gets no fabricated risk or confidence verdict.
 
 ### `restore`
 
@@ -92,6 +120,12 @@ devklean restore   # explains how to recover from the Recycle Bin / Trash
 - **Windows** — open the Recycle Bin and restore the item.
 - **macOS** — open Trash in Finder and "Put Back".
 - **Linux** — open Trash in your file manager and restore.
+
+If the item was deleted with `--compress`, what lands in trash is a `.tar.gz`
+(or `.tar.zst`, if `compress_format = "zstd"`) archive rather than the original
+directory — restore the archive from trash, then extract it to the original
+path yourself, e.g. `tar -xf <name>.tar.gz`. devklean does not decompress
+automatically (yet).
 
 Run `devklean history` to see what was removed and when.
 
@@ -137,7 +171,8 @@ Delete 3 directories (~834.0 MB)? (y/N) y
 ## Platform support
 
 `devklean` runs on **Linux, macOS, and Windows**. All core commands — `scan`,
-`clean`, `history`, `doctor`, and `restore` — work on every platform.
+`clean`, `analyze`, `explain`, `history`, `doctor`, and `restore` — work on
+every platform.
 
 **Known limitation:** interactive mode (`-i` / `--interactive`) is **Linux/macOS
 only** for now. It is built on Python's `curses` module, which is not available
@@ -163,6 +198,9 @@ exclude = ["node_modules", ".git"]
 dry_run = false
 interactive = false
 default_yes = false          # skip the y/N prompt (the large-deletion DELETE gate still applies)
+compress = false             # compress eligible directories before trashing them
+compress_min_size = 10485760 # bytes; directories smaller than this are trashed uncompressed (default 10 MiB)
+compress_format = "gzip"     # "gzip" (stdlib, default) or "zstd" (needs the devklean[zstd] extra)
 theme = "default"            # "default" or "mono"
 confirm_threshold = 1073741824   # bytes; deletions >= this require typing DELETE (default 1 GiB)
 path = "."
@@ -180,6 +218,50 @@ directories = ["vendor"]              # directory names to skip
 Scalar keys from the project file override the global file; list keys (`exclude`, `ignore.*`) are unioned. Unknown keys and malformed TOML produce a warning rather than a crash.
 
 Color follows the `theme` setting and is automatically disabled when output is piped or `NO_COLOR` is set.
+
+## Compression
+
+Common artifacts (`node_modules`, `.venv`, `.next`, build caches) often compress
+to a fraction of their on-disk size. Pass `--compress` (or set `compress = true`
+in config) and devklean will archive each eligible directory into a sibling
+`.tar.gz` (gzip, the default) before sending *that* to trash instead of the raw
+directory — shrinking how much space the deletion actually occupies in trash
+before it's emptied. `zstd` is available as an opt-in format (see below) for a
+better compression ratio.
+
+Compression is always ordered for safety: devklean compresses to a temp
+archive, verifies it (test-extracts every entry and cross-checks the file
+count and total uncompressed size against the source), and only *after*
+`send2trash` confirms the archive is in the trash does it remove the original
+directory. If compression or verification fails, or `send2trash` itself fails,
+the original directory is left completely untouched and the error is reported
+per-item — nothing is ever partially deleted.
+
+- Only applies to directories (not symlinks) at or above `compress_min_size`
+  (default 10 MiB); smaller directories and files are trashed as-is, since the
+  archive/verify overhead rarely pays for itself below that size.
+- The archive path, format, original size, and compressed size are recorded in
+  deletion metadata, so `history` and `doctor` see compressed deletions the
+  same as uncompressed ones.
+- Off by default, so existing scripts and habits aren't surprised by archives
+  appearing in trash.
+- Restoring a compressed item is manual today — see [`restore`](#restore).
+
+### zstd (optional)
+
+```bash
+pip install 'devklean[zstd]'
+```
+
+```toml
+[defaults]
+compress = true
+compress_format = "zstd"
+```
+
+If `compress_format = "zstd"` is set but the `zstandard` package isn't
+installed, devklean logs a warning and falls back to gzip rather than
+crashing.
 
 ## Logs
 

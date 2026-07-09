@@ -3,8 +3,10 @@ from __future__ import annotations
 import sys
 from typing import Callable
 
+from devklean.cli.commands.analyze import run_analyze
 from devklean.cli.commands.clean import run_clean
 from devklean.cli.commands.doctor import run_doctor
+from devklean.cli.commands.explain import run_explain
 from devklean.cli.commands.history import run_history
 from devklean.cli.commands.restore import run_restore
 from devklean.cli.commands.scan import run_scan
@@ -23,6 +25,8 @@ _COMMANDS: dict[str, CommandHandler] = {
     "history": run_history,
     "doctor": run_doctor,
     "restore": run_restore,
+    "explain": run_explain,
+    "analyze": run_analyze,
 }
 
 

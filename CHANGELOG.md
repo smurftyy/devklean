@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`analyze [PATH]`** — scan for cleanable directories and cross-reference
+  them against a new artifact-signature registry: buckets results into
+  recognized (a known artifact type, with risk tier, confidence, and a
+  staleness estimate for its parent project) and unrecognized (no registry
+  entry, no verdict fabricated), flags project roots with conflicting
+  package-manager lockfiles, and reports an overall workspace-health score
+  (0-100). `--verbose` prints the scoring formula and its raw inputs.
+- **`explain PATH`** — look up a single directory against the same
+  signature registry and explain what it is: ecosystem, what generates it,
+  how to regenerate it, risk tier, confidence, and the rationale behind the
+  entry. An unrecognized path gets no risk/confidence verdict at all.
+- Artifact-signature registry (`devklean.signatures`) backing both commands
+  above — static, maintainer-assigned data (not inferred) covering
+  `node_modules`, `venv`/`.venv`/`env`, `__pycache__`, `.next`, `dist`, and
+  `.cache`.
+- `--compress` flag (and matching `compress` config default) for `clean`:
+  when set, eligible directories are archived into a sibling `.tar.gz` (or
+  `.tar.zst`, via the `devklean[zstd]` extra) before being sent to trash,
+  shrinking the footprint of large artifacts like `node_modules` or
+  `.venv`. Compression is ordered for safety — archive, verify, send the
+  archive to trash, and only then remove the original — so a failure at
+  any step leaves the source directory untouched. New `compress_min_size`
+  and `compress_format` config keys tune the size threshold and archive
+  format. Metadata schema bumped to version 5 to record the archive path,
+  format, and original/compressed sizes; restoring a compressed item
+  currently requires unpacking the archive by hand after pulling it out of
+  trash.
+
 ## [1.0.2] - 2026-07-01
 
 ### Changed

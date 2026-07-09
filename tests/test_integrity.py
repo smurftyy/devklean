@@ -9,9 +9,16 @@ from devklean.deletion.integrity import IntegrityReport, check_integrity
 from devklean.deletion.metadata import CorruptMetadata, MetadataManager
 
 
-def _valid_payload(*, deletion_id: str, trash_path: str | None, size: int = 100) -> dict:
+def _valid_payload(
+    *,
+    deletion_id: str,
+    trash_path: str | None,
+    size: int = 100,
+    archive_path: str | None = None,
+    compression_format: str | None = None,
+) -> dict:
     payload = {
-        "schema_version": 3,
+        "schema_version": 4,
         "deletion": {
             "id": deletion_id,
             "run_id": "run1",
@@ -26,6 +33,8 @@ def _valid_payload(*, deletion_id: str, trash_path: str | None, size: int = 100)
     }
     if trash_path is not None:
         payload["trash"] = {"path": trash_path}
+    if archive_path is not None:
+        payload["archive"] = {"path": archive_path, "format": compression_format or "zip"}
     return payload
 
 
@@ -142,6 +151,25 @@ def test_check_integrity_does_not_treat_missing_trash_as_a_problem(tmp_path: Pat
     )
 
     report = check_integrity(MetadataManager(storage_dir=tmp_path / "meta"))
+
+    assert report.healthy
+    assert len(report.valid) == 1
+
+
+def test_check_integrity_accepts_compressed_metadata(tmp_path: Path) -> None:
+    meta = tmp_path / "meta"
+    _write(
+        meta,
+        "compressed.json",
+        _valid_payload(
+            deletion_id="c",
+            trash_path=None,
+            archive_path="/tmp/c.zip",
+            compression_format="zip",
+        ),
+    )
+
+    report = check_integrity(MetadataManager(storage_dir=meta))
 
     assert report.healthy
     assert len(report.valid) == 1

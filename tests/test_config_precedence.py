@@ -22,12 +22,14 @@ def test_new_default_keys_parsed(tmp_path: Path) -> None:
         """
 [defaults]
 default_yes = true
+compress = true
 theme = "mono"
 confirm_threshold = 5368709120
 """,
     )
     config = ConfigManager(config_path=cfg_path, project_dir=tmp_path).load()
     assert config.defaults.default_yes is True
+    assert config.defaults.compress is True
     assert config.defaults.theme == "mono"
     assert config.defaults.confirm_threshold == 5368709120
 
@@ -35,6 +37,7 @@ confirm_threshold = 5368709120
 def test_default_keys_have_sane_defaults(tmp_path: Path) -> None:
     config = ConfigManager(config_path=tmp_path / "missing.toml", project_dir=tmp_path).load()
     assert config.defaults.default_yes is False
+    assert config.defaults.compress is False
     assert config.defaults.theme == "default"
     assert config.defaults.confirm_threshold == 1024**3
 

@@ -5,9 +5,22 @@ import argparse
 from devklean._version import __version__
 
 COMMAND_NAMES = frozenset(
-    {"scan", "clean", "history", "doctor", "stats", "restore", "config", "plugins"}
+    {
+        "scan",
+        "clean",
+        "history",
+        "doctor",
+        "stats",
+        "restore",
+        "explain",
+        "analyze",
+        "config",
+        "plugins",
+    }
 )
-IMPLEMENTED_COMMANDS = frozenset({"scan", "clean", "history", "doctor", "restore"})
+IMPLEMENTED_COMMANDS = frozenset(
+    {"scan", "clean", "history", "doctor", "restore", "explain", "analyze"}
+)
 RESERVED_COMMANDS = frozenset({"stats", "config", "plugins"})
 GLOBAL_OPTIONS = frozenset({"-h", "--help", "--version"})
 
@@ -35,6 +48,12 @@ def _add_clean_arguments(parser: argparse.ArgumentParser) -> None:
         "--dry-run",
         action="store_true",
         help="Show what would be deleted without deleting anything",
+    )
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Compress eligible directories into a .tar.gz (or .tar.zst) archive "
+        "before trashing them",
     )
     parser.add_argument(
         "-i",
@@ -77,6 +96,26 @@ def _add_subparsers(parser: argparse.ArgumentParser) -> None:
 
     subparsers.add_parser(
         "restore", help="Show how to recover deleted items from your system trash"
+    )
+
+    explain_parser = subparsers.add_parser(
+        "explain",
+        help="Explain what a directory is, using the artifact-signature registry",
+    )
+    explain_parser.add_argument(
+        "path",
+        help="Path to a directory to look up in the signature registry",
+    )
+
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        help="Analyze cleanable directories using the artifact-signature registry",
+    )
+    _add_path_argument(analyze_parser)
+    analyze_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show the workspace-health formula and its raw inputs",
     )
 
     history_parser = subparsers.add_parser(

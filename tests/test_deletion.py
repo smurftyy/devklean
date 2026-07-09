@@ -8,7 +8,8 @@ from pathlib import Path
 
 from devklean.cli.commands.clean import run_standard
 from devklean.deletion import delete_items
-from devklean.deletion.metadata import MetadataManager
+from devklean.deletion.compression import CompressionVerificationError
+from devklean.deletion.metadata import DeletionArchive, MetadataManager
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
 
 
@@ -27,6 +28,187 @@ def test_delete_items_delegates_to_send2trash(tmp_path: Path, fake_trash) -> Non
     assert result.deleted == (str(source),)
     assert result.failed == ()
     assert result.total_size == 1024
+
+
+def test_delete_items_compresses_directory_before_trashing(tmp_path: Path, fake_trash) -> None:
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+    for index in range(64):
+        (source / f"file-{index}.txt").write_text("A" * 2048, encoding="utf-8")
+    original_size = sum(f.stat().st_size for f in source.rglob("*") if f.is_file())
+
+    item = CleanableItem(str(source), "node_modules", original_size, "Node.js")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    # compress_min_size=0 forces compression regardless of size, so the test
+    # doesn't need to write a real 10 MiB+ fixture to cross the default gate.
+    result = delete_items(
+        [item], item.size, metadata_manager=manager, compress=True, compress_min_size=0
+    )
+
+    assert result.deleted == (str(source),)
+    assert result.failed == ()
+    assert not source.exists()  # removed only after the archive was confirmed trashed
+
+    [trashed_path] = fake_trash
+    archive = Path(trashed_path)
+    assert archive.name.startswith(".node_modules-")
+    assert archive.name.endswith(".tar.gz")
+    assert not archive.exists()  # fake_trash removed it, same as a real send2trash call would
+
+    records = manager.load_records()
+    (stored,) = records.records
+    archive_record = stored.record.archive
+    assert archive_record is not None
+    assert archive_record.format == "gzip"
+    assert archive_record.compressed is True
+    assert archive_record.original_size == original_size
+    assert archive_record.compressed_size is not None
+    assert archive_record.compressed_size < original_size
+
+
+def test_delete_items_skips_compression_below_min_size(tmp_path: Path, fake_trash) -> None:
+    source = tmp_path / "workspace" / ".cache"
+    source.mkdir(parents=True)
+    (source / "small.txt").write_text("hi", encoding="utf-8")
+
+    item = CleanableItem(str(source), ".cache", 2, "Cache")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    result = delete_items(
+        [item],
+        item.size,
+        metadata_manager=manager,
+        compress=True,
+        compress_min_size=10 * 1024 * 1024,
+    )
+
+    assert result.deleted == (str(source),)
+    assert fake_trash == [str(source)]  # trashed as-is, never compressed
+    records = manager.load_records()
+    (stored,) = records.records
+    assert stored.record.archive is None
+
+
+def test_delete_items_leaves_original_intact_when_verification_fails(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Reproduces the PR #12 failure mode: a failure partway through the
+    compress-before-trash sequence must never delete the source. PR #12's bug
+    was calling shutil.rmtree(source) unconditionally right after building the
+    archive, with no verification and before send2trash ran at all — so a
+    later send2trash failure meant the data was already gone. This asserts
+    the fix: verification (or send2trash) failing leaves the source directory
+    completely untouched, with no partial deletion."""
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+    (source / "a.txt").write_text("A" * 2048, encoding="utf-8")
+    (source / "b.txt").write_text("B" * 2048, encoding="utf-8")
+    original_size = sum(f.stat().st_size for f in source.rglob("*") if f.is_file())
+
+    def _boom(result) -> None:
+        raise CompressionVerificationError("simulated corruption detected mid-verification")
+
+    monkeypatch.setattr("devklean.deletion.trash.verify_archive", _boom)
+
+    item = CleanableItem(str(source), "node_modules", original_size, "Node.js")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    result = delete_items(
+        [item], item.size, metadata_manager=manager, compress=True, compress_min_size=0
+    )
+
+    assert result.deleted == ()
+    assert result.failed[0].path == str(source)
+    assert source.exists()
+    assert (source / "a.txt").exists()
+    assert (source / "b.txt").exists()
+    # the failed temp archive must not be left behind either
+    assert list((tmp_path / "workspace").glob(".node_modules-*")) == []
+    assert manager.load_records().records == ()  # nothing recorded for a failed item
+
+
+def test_delete_items_leaves_original_intact_when_send2trash_fails(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Same failure-mode reproduction, one step later: the archive verifies
+    fine but send2trash itself fails (disk full, permission denied, ...).
+    The original directory must still be completely untouched — it is only
+    ever removed *after* send2trash confirms the archive made it to trash."""
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+    (source / "a.txt").write_text("A" * 2048, encoding="utf-8")
+    original_size = sum(f.stat().st_size for f in source.rglob("*") if f.is_file())
+
+    def _boom(path) -> None:
+        raise OSError("simulated send2trash failure")
+
+    monkeypatch.setattr("devklean.deletion.trash.send2trash", _boom)
+
+    item = CleanableItem(str(source), "node_modules", original_size, "Node.js")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    result = delete_items(
+        [item], item.size, metadata_manager=manager, compress=True, compress_min_size=0
+    )
+
+    assert result.deleted == ()
+    assert result.failed[0].path == str(source)
+    assert source.exists()
+    assert (source / "a.txt").exists()
+    assert list((tmp_path / "workspace").glob(".node_modules-*")) == []
+
+
+def test_delete_items_surfaces_error_when_original_removal_fails_after_trash(
+    tmp_path: Path, fake_trash, monkeypatch
+) -> None:
+    """One step later still: send2trash of the archive succeeds (the data is
+    genuinely safe), but the final shutil.rmtree(source) fails (e.g. a file
+    inside is briefly locked). This must not be swallowed or reported as a
+    plain success — it's a distinct outcome (archive safely trashed, original
+    left behind) and the caller/CLI must be told plainly, not silently."""
+    source = tmp_path / "workspace" / "node_modules"
+    source.mkdir(parents=True)
+    (source / "a.txt").write_text("A" * 2048, encoding="utf-8")
+    original_size = sum(f.stat().st_size for f in source.rglob("*") if f.is_file())
+
+    def _boom(path) -> None:
+        raise OSError("simulated: directory busy")
+
+    monkeypatch.setattr("shutil.rmtree", _boom)
+
+    item = CleanableItem(str(source), "node_modules", original_size, "Node.js")
+    manager = MetadataManager(storage_dir=tmp_path / "m")
+
+    result = delete_items(
+        [item], item.size, metadata_manager=manager, compress=True, compress_min_size=0
+    )
+
+    # Not a silent success: the item is a reported failure, not a deletion.
+    assert result.deleted == ()
+    assert len(result.failed) == 1
+    assert result.failed[0].path == str(source)
+
+    error = result.failed[0].error
+    # Distinct from an ordinary failure: says the archive made it to trash...
+    assert "compressed archive was trashed" in error
+    # ...names the actual reason (proves {exc} was interpolated, not hardcoded)...
+    assert "simulated: directory busy" in error
+    # ...and tells the user what to do about it.
+    assert "remove it manually" in error
+
+    # Distinct from a verify/send2trash failure: the archive really did make
+    # it to (fake) trash and must not be rolled back — it's the only
+    # recoverable copy left once the original couldn't be removed.
+    assert len(fake_trash) == 1
+    assert fake_trash[0].endswith(".tar.gz")
+
+    # The original is genuinely still there — nothing was silently lost.
+    assert source.exists()
+    assert (source / "a.txt").exists()
+
+    # A failed item is never recorded as a successful deletion.
+    assert manager.load_records().records == ()
 
 
 def test_delete_items_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
@@ -174,12 +356,32 @@ def test_delete_items_records_only_successes(tmp_path: Path, monkeypatch) -> Non
     payload = json.loads(records[0].read_text(encoding="utf-8"))
 
     assert result.deleted == ("/tmp/a",)
-    assert payload["schema_version"] == 3
+    assert payload["schema_version"] == 5
     assert payload["deletion"]["strategy"] == "trash"
     assert isinstance(payload["deletion"]["run_id"], str) and payload["deletion"]["run_id"]
     assert payload["item"]["original_path"] == "/tmp/a"
     assert payload["item"]["display_name"] == "A"
     assert payload["item"]["size"] == 10
+
+
+def test_metadata_manager_records_archive_details(tmp_path: Path) -> None:
+    storage_dir = tmp_path / "metadata"
+    manager = MetadataManager(storage_dir=storage_dir)
+    item = CleanableItem("/tmp/a", "a", 10, "A")
+    result = DeleteResult(deleted=("/tmp/a",), failed=(), total_size=10)
+
+    manager.record_successes(
+        [item],
+        result,
+        "trash",
+        archives={"/tmp/a": DeletionArchive(path="/tmp/a.zip", format="zip")},
+    )
+
+    records = sorted(storage_dir.glob("*.json"))
+    payload = json.loads(records[0].read_text(encoding="utf-8"))
+
+    assert payload["schema_version"] == 5
+    assert payload["archive"] == {"path": "/tmp/a.zip", "format": "zip", "compressed": True}
 
 
 def test_metadata_manager_skips_failed_deletions(tmp_path: Path) -> None:

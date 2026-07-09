@@ -8,7 +8,7 @@ from devklean.cli.confirmation import (
     confirm_large_deletion,
     exceeds_threshold,
 )
-from devklean.config.models import AppConfig
+from devklean.config.models import DEFAULT_COMPRESS_FORMAT, DEFAULT_COMPRESS_MIN_SIZE, AppConfig
 from devklean.deletion.safety import SafetyValidator
 from devklean.models import CleanableItem
 from devklean.output.base import Renderer
@@ -45,6 +45,9 @@ def run_standard(
     dry_run: bool,
     validator: SafetyValidator | None = None,
     *,
+    compress: bool = False,
+    compress_min_size: int = DEFAULT_COMPRESS_MIN_SIZE,
+    compress_format: str = DEFAULT_COMPRESS_FORMAT,
     default_yes: bool = False,
     confirm_threshold: int = DEFAULT_LARGE_THRESHOLD,
 ) -> None:
@@ -58,7 +61,14 @@ def run_standard(
         renderer.aborted()
         return
 
-    result = delete_items(found, total_size, validator=validator)
+    result = delete_items(
+        found,
+        total_size,
+        validator=validator,
+        compress=compress,
+        compress_min_size=compress_min_size,
+        compress_format=compress_format,
+    )
     renderer.deletion_result(result)
 
 
@@ -76,6 +86,12 @@ def run_clean(
     defaults = config.defaults
     default_yes = getattr(args, "yes", False) or getattr(defaults, "default_yes", False)
     confirm_threshold = getattr(defaults, "confirm_threshold", DEFAULT_LARGE_THRESHOLD)
+    compress = getattr(args, "compress", False) or getattr(defaults, "compress", False)
+    # compress_min_size/compress_format are config-only knobs, not CLI flags:
+    # --compress is the only opt-in surface on the command line, so these two
+    # are read straight from defaults rather than duplicated as flags.
+    compress_min_size = getattr(defaults, "compress_min_size", DEFAULT_COMPRESS_MIN_SIZE)
+    compress_format = getattr(defaults, "compress_format", DEFAULT_COMPRESS_FORMAT)
 
     if args.interactive:
         # Interactive mode relies on curses, which is unavailable on Windows.
@@ -97,6 +113,9 @@ def run_clean(
             found,
             args.dry_run,
             validator,
+            compress=compress,
+            compress_min_size=compress_min_size,
+            compress_format=compress_format,
             confirm_threshold=confirm_threshold,
         )
     else:
@@ -105,6 +124,9 @@ def run_clean(
             found,
             args.dry_run,
             validator,
+            compress=compress,
+            compress_min_size=compress_min_size,
+            compress_format=compress_format,
             default_yes=default_yes,
             confirm_threshold=confirm_threshold,
         )

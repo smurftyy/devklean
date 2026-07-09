@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+import shutil
 from collections.abc import Sequence
+from pathlib import Path
 
 from send2trash import send2trash
 
-from devklean.deletion.metadata import TRASH_STRATEGY, MetadataManager
+from devklean.config.models import DEFAULT_COMPRESS_FORMAT, DEFAULT_COMPRESS_MIN_SIZE
+from devklean.deletion.compression import (
+    CompressionVerificationError,
+    compress_path,
+    verify_archive,
+)
+from devklean.deletion.metadata import TRASH_STRATEGY, DeletionArchive, MetadataManager
 from devklean.deletion.safety import SafetyValidator
 from devklean.logging_setup import get_logger
 from devklean.models import CleanableItem, DeleteFailure, DeleteResult
@@ -22,6 +30,9 @@ def delete_items(
     validator: SafetyValidator | None = None,
     metadata_manager: MetadataManager | None = None,
     dry_run: bool = False,
+    compress: bool = False,
+    compress_min_size: int = DEFAULT_COMPRESS_MIN_SIZE,
+    compress_format: str = DEFAULT_COMPRESS_FORMAT,
 ) -> DeleteResult:
     """Validate, then move safe items to the native OS trash via ``send2trash``.
 
@@ -30,6 +41,12 @@ def delete_items(
     *before any ``send2trash`` call is reachable* — the structural guarantee
     that a dry run performs no filesystem operations. Successful deletions are
     recorded in the metadata store (used by ``history`` and ``doctor``).
+
+    When ``compress`` is set, eligible items go through ``_send_to_trash``'s
+    compress -> verify -> trash -> remove-original ordering (see its
+    docstring); a failure at any step before the original is removed leaves
+    it completely untouched and is reported as a per-item failure, the same
+    as any other ``send2trash`` error.
     """
     validator = validator or SafetyValidator()
     safe, blocked = validator.partition(items)
@@ -56,14 +73,24 @@ def delete_items(
 
     deleted: list[str] = []
     failures: list[DeleteFailure] = []
+    archives: dict[str, DeletionArchive] = {}
     for item in safe:
         try:
-            send2trash(item.path)
+            archive = _send_to_trash(
+                item,
+                compress=compress,
+                compress_min_size=compress_min_size,
+                compress_format=compress_format,
+            )
+            if archive is not None:
+                archives[item.path] = archive
             deleted.append(item.path)
-        except OSError as exc:
+        except (OSError, CompressionVerificationError) as exc:
             # TrashPermissionError subclasses OSError; ENOENT/EACCES and
-            # platform-specific failures surface here too. Report the path and
-            # keep going so one bad item never aborts the batch.
+            # platform-specific failures surface here too, alongside
+            # CompressionVerificationError from a failed compress/verify.
+            # Report the path and keep going so one bad item never aborts
+            # the batch.
             failures.append(DeleteFailure(path=item.path, error=str(exc)))
 
     result = DeleteResult(
@@ -77,13 +104,85 @@ def delete_items(
     for failure in result.failed:
         logger.warning("delete failed path=%s error=%s", failure.path, failure.error)
     logger.info(
-        "deletion summary strategy=%s deleted=%d failed=%d size=%d",
+        "deletion summary strategy=%s deleted=%d failed=%d size=%d compressed=%d",
         STRATEGY_NAME,
         result.deleted_count,
         result.failed_count,
         result.total_size,
+        len(archives),
     )
 
     manager = metadata_manager or MetadataManager()
-    manager.record_successes(items, result, STRATEGY_NAME)
+    manager.record_successes(items, result, STRATEGY_NAME, archives=archives)
     return result
+
+
+def _send_to_trash(
+    item: CleanableItem,
+    *,
+    compress: bool,
+    compress_min_size: int,
+    compress_format: str,
+) -> DeletionArchive | None:
+    """Send one item to the native OS trash, compressing first when eligible.
+
+    The ordering here is the entire compress-before-trash safety contract:
+
+    1. Compress the source to a temp archive. The source is never touched.
+    2. Verify the archive (test-extract + count/size cross-check). The
+       source is still untouched; a failure here removes only the temp
+       archive and raises — nothing has happened to the source.
+    3. ``send2trash`` the *archive*. Only once this call returns successfully
+       has anything been "deleted" from the user's perspective.
+    4. Only now, with a verified copy already confirmed in the trash, remove
+       the original directory directly. This does not also go through
+       ``send2trash`` — the archive already serves as the recoverable copy,
+       so trashing the original too would duplicate space there and defeat
+       the point of compressing first.
+
+    A failure at step 4 (the original can't be removed after all) is
+    reported distinctly from a failure at steps 1-3: the archive is already
+    safe in the trash, so no data has been lost, but the original directory
+    is still on disk and the caller must be told that plainly.
+    """
+    if not (compress and _should_compress(item, compress_min_size)):
+        send2trash(item.path)
+        return None
+
+    source = Path(item.path)
+    result = compress_path(source, compress_format=compress_format)
+    try:
+        verify_archive(result)
+    except CompressionVerificationError:
+        result.archive_path.unlink(missing_ok=True)
+        raise
+
+    compressed_size = result.compressed_size  # read now: the file moves to trash next
+    try:
+        send2trash(str(result.archive_path))
+    except OSError:
+        result.archive_path.unlink(missing_ok=True)
+        raise
+
+    try:
+        shutil.rmtree(source)
+    except OSError as exc:
+        raise OSError(
+            f"compressed archive was trashed, but the original directory {source} "
+            f"could not be removed ({exc}); remove it manually to reclaim the disk space"
+        ) from exc
+
+    return DeletionArchive(
+        path=str(result.archive_path),
+        format=result.format,
+        compressed=True,
+        original_size=result.original_size,
+        compressed_size=compressed_size,
+    )
+
+
+def _should_compress(item: CleanableItem, compress_min_size: int) -> bool:
+    source = Path(item.path)
+    if not source.is_dir() or source.is_symlink():
+        return False
+    return item.size >= compress_min_size
