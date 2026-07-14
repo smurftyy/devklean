@@ -1,122 +1,115 @@
-import { SimulatedProject, CommandStep } from './types';
+import { DemoProject, Feature, Ecosystem, StoryBeat } from './types';
 
-export const SIMULATED_PROJECTS: SimulatedProject[] = [
-  {
-    id: '1',
-    name: 'react-portfolio-app',
-    type: 'node',
-    path: '~/projects/web/react-portfolio-app',
-    artifactSize: 480,
-    artifactName: 'node_modules',
-    filesCount: 28410
-  },
-  {
-    id: '2',
-    name: 'rust-blockchain-node',
-    type: 'rust',
-    path: '~/projects/crypto/rust-blockchain-node',
-    artifactSize: 8420,
-    artifactName: 'target',
-    filesCount: 142050
-  },
-  {
-    id: '3',
-    name: 'ml-price-predictor',
-    type: 'python',
-    path: '~/projects/ai/ml-price-predictor',
-    artifactSize: 2150,
-    artifactName: '.venv',
-    filesCount: 18920
-  },
-  {
-    id: '4',
-    name: 'nextjs-saas-dashboard',
-    type: 'node',
-    path: '~/projects/saas/nextjs-saas-dashboard',
-    artifactSize: 350,
-    artifactName: 'node_modules',
-    filesCount: 19450
-  },
-  {
-    id: '5',
-    name: 'raytracer-engine',
-    type: 'rust',
-    path: '~/projects/graphics/raytracer-engine',
-    artifactSize: 2800,
-    artifactName: 'target',
-    filesCount: 38400
-  }
+// The four ecosystems devklean's scanner actually recognizes, sourced from
+// devklean.config.defaults.DEFAULT_TARGETS / the signature registry.
+export const ECOSYSTEMS: Ecosystem[] = [
+  { name: 'Node.js', artifacts: 'node_modules', accent: 'text-emerald-400' },
+  { name: 'Python', artifacts: 'venv · .venv · env · __pycache__', accent: 'text-sky-400' },
+  { name: 'Next.js', artifacts: '.next', accent: 'text-zinc-100' },
+  { name: 'Generic caches', artifacts: 'dist · .cache', accent: 'text-amber-400' },
 ];
 
-export const COMMAND_STEPS: CommandStep[] = [
+// Phase 3 — the three read-only commands that make up devklean's differentiated
+// layer. `clean` is the only command that deletes; these three never do.
+export const FEATURES: Feature[] = [
   {
-    name: 'Install',
-    command: 'npm install -g devklean',
-    description: 'Install globally via npm or fetch the standalone Rust/Go executable directly from GitHub releases.',
-    badge: 'Step 1'
-  },
-  {
-    name: 'Scan',
+    id: 'scan',
     command: 'devklean scan',
-    description: 'Recursively search your workspace for build artifacts. Reviews folders without modifying anything.',
-    badge: 'Step 2'
+    title: 'Scan',
+    description:
+      'Walks your workspace, finds cleanable directories, and reports each one’s size. It never deletes — it only shows you what is there.',
+    sampleOutput: 'node_modules   612.0 MB',
   },
   {
-    name: 'Purge',
-    command: 'devklean purge',
-    description: 'Interactively select which projects to clean. Safely release gigabytes of disk space instantly.',
-    badge: 'Step 3'
-  }
+    id: 'analyze',
+    command: 'devklean analyze',
+    title: 'Analyze',
+    description:
+      'Cross-references every match against the artifact-signature registry — risk tier, confidence, staleness — and reports a 0–100 workspace-health score. Unrecognized directories get no fabricated verdict.',
+    sampleOutput: 'workspace health   82/100',
+  },
+  {
+    id: 'explain',
+    command: 'devklean explain PATH',
+    title: 'Explain',
+    description:
+      'Looks up a single directory: what generates it, how to regenerate it, its risk tier and confidence, and the reasoning behind the call — straight from the registry entry.',
+    sampleOutput: '.next → Next.js · low risk',
+  },
 ];
 
-export const FEATURES = [
+// Phase 4 — the demo workspace. Every field below is copied verbatim from
+// src/devklean/signatures/registry.py so the analyze/explain steps show real
+// registry data, not invented verdicts.
+export const DEMO_PROJECTS: DemoProject[] = [
   {
-    id: 'lightning-fast',
-    title: 'Lightning Fast',
-    description: 'Built on a core asynchronous directory walker. Scans hundreds of thousands of directories in milliseconds without blocking your system.',
-    badge: 'Rust Engine',
-    details: 'Leverages thread pool processing to scan massive nested monorepos in under a second.'
+    id: 'node',
+    dirName: 'node_modules',
+    path: '~/projects/web/portfolio',
+    sizeMB: 1240,
+    ecosystem: 'Node.js (npm/yarn/pnpm)',
+    risk: 'low',
+    confidence: 0.98,
+    generatedBy: 'npm install / yarn install / pnpm install, from package.json and a lockfile',
+    regenerateCommand: 'npm install',
+    rationale:
+      "Directory name is npm/Node's own convention; contents are fully reproducible from package.json plus a lockfile.",
+    staleDays: 34,
+    lockfileConflict: true,
   },
   {
-    id: 'interactive-safe',
-    title: 'Interactive & Safe',
-    description: 'Review every directory, its size, and last active date before purging. Safe defaults prevent deletion of active project builds.',
-    badge: 'Dry-Run Guard',
-    details: 'Includes a preview dry-run mode and customizable excludes (.gitignore, .npmignore) to secure essential code.'
+    id: 'env',
+    dirName: 'env',
+    path: '~/projects/api/ingest-service',
+    sizeMB: 360,
+    ecosystem: 'Python (venv, legacy naming)',
+    risk: 'medium',
+    confidence: 0.75,
+    generatedBy: 'python -m venv, populated via pip from a requirements/lock file',
+    regenerateCommand: 'python -m venv env && env/bin/pip install -r requirements.txt',
+    rationale:
+      "'env' is a less specific convention than venv/.venv and is sometimes used for unrelated environment-variable directories, so the match is less certain.",
+    staleDays: 96,
   },
   {
-    id: 'multi-language',
-    title: 'Multi-Language Ecosystem',
-    description: 'Supports deep artifact identification across popular runtimes and packages. Cleans node_modules, target, .venv, and __pycache__.',
-    badge: 'Universal CLI',
-    details: 'One unified tool with intelligent detection that adjusts patterns according to the detected project type.'
-  }
+    id: 'next',
+    dirName: '.next',
+    path: '~/projects/web/marketing-site',
+    sizeMB: 200,
+    ecosystem: 'Next.js',
+    risk: 'low',
+    confidence: 0.95,
+    generatedBy: 'next build / next dev, from the project’s Next.js source',
+    regenerateCommand: 'next build',
+    rationale:
+      "Directory name is Next.js's own build-output convention; reproducible from source via the Next.js CLI.",
+    staleDays: 12,
+  },
 ];
 
-export const ECOSYSTEMS = [
-  { name: 'Node.js', icon: 'Javascript', label: 'node_modules & dist', color: 'text-emerald-400' },
-  { name: 'Rust Cargo', icon: 'Rust', label: 'target & registry', color: 'text-amber-500' },
-  { name: 'Python venv', icon: 'Python', label: '.venv, venv & __pycache__', color: 'text-blue-400' },
-  { name: 'Go Build', icon: 'Go', label: 'pkg/mod & build cache', color: 'text-sky-400' }
-];
-
-export const REVIEWS = [
+// Phase 6 — the four factual beats of the project's evolution. Beat 1 is the
+// maintainer's own words; beats 2–4 are drawn straight from CHANGELOG.md with
+// no invented motivation.
+export const STORY_BEATS: StoryBeat[] = [
   {
-    quote: "DevKlean reclaimed 45GB of space on my MacBook Pro in under 12 seconds. It's now part of my weekly cron routine.",
-    author: "Sarah Jenkins",
-    role: "Senior Software Engineer, Vercel",
-    avatar: "SJ"
+    marker: 'devclean.py',
+    title: 'The script',
+    body:
+      '“It started as a simple script — I just wanted to get rid of dev junk without doing it by hand. A cool little Python script, basically. It grew from there into an actual utility.”',
   },
   {
-    quote: "I used to write custom bash scripts to find nested node_modules. DevKlean replaces all of them with a lightning-fast, safe interactive interface.",
-    author: "Alex Rivera",
-    role: "Open Source Maintainer",
-    avatar: "AR"
+    marker: 'v1.0.0',
+    title: 'First PyPI release',
+    body: 'Packaged and published to PyPI: scan and clean, with every deletion routed to the system trash.',
   },
   {
-    quote: "The interactive multi-select is amazing. I can clean up rust cargo builds from 3 months ago while keeping my active projects compiled.",
-    author: "Linus Lindqvist",
-    role: "Rust Contributor",
-    avatar: "LL"
-  }
+    marker: 'v1.0.2',
+    title: 'Terminal hardening',
+    body: 'Adopted click.echo across the console layer, fixing Unicode and Windows terminal handling.',
+  },
+  {
+    marker: 'v1.1.0',
+    title: 'A layer that reasons',
+    body: 'Added analyze and explain, backed by the artifact-signature registry, plus --compress for archiving large artifacts before trashing them.',
+  },
 ];

@@ -1,261 +1,143 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Play, RotateCcw, CheckCircle, Flame, Copy, Check } from 'lucide-react';
-import { COMMAND_STEPS, SIMULATED_PROJECTS } from '../data';
-import { CommandStep } from '../types';
+import React, { useEffect, useState } from 'react';
+import { Terminal, RotateCcw, ChevronDown, ArrowDown, ScanLine, Gauge, FileSearch } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { DEMO_PROJECTS } from '../data';
+import { DemoProject, RiskLevel, RISK_WEIGHT } from '../types';
+
+type Step = 'scan' | 'analyze' | 'explain';
+
+const STEPS: { id: Step; label: string; command: string; blurb: string; icon: React.ReactNode }[] = [
+  { id: 'scan', label: 'Scan', command: 'devklean scan', blurb: 'Find cleanable directories and their sizes.', icon: <ScanLine className="h-4 w-4" /> },
+  { id: 'analyze', label: 'Analyze', command: 'devklean analyze', blurb: 'Add risk, confidence, and a health score.', icon: <Gauge className="h-4 w-4" /> },
+  { id: 'explain', label: 'Explain', command: 'devklean explain', blurb: 'Open any row for the full reasoning.', icon: <FileSearch className="h-4 w-4" /> },
+];
+
+const RISK_STYLES: Record<RiskLevel, string> = {
+  low: 'text-emerald-400 border-emerald-400/30 bg-emerald-400/10',
+  medium: 'text-amber-400 border-amber-400/30 bg-amber-400/10',
+  high: 'text-red-400 border-red-400/30 bg-red-400/10',
+};
+
+// Workspace-health score via the exact formula in devklean.signatures.health:
+// round(100 * sum(size*risk_weight) / total) - 10*lockfile_conflicts, clamped.
+function computeHealth(projects: DemoProject[]): number {
+  const total = projects.reduce((s, p) => s + p.sizeMB, 0);
+  if (total === 0) return 100;
+  const weighted = projects.reduce((s, p) => s + p.sizeMB * RISK_WEIGHT[p.risk], 0);
+  const conflicts = projects.filter((p) => p.lockfileConflict).length;
+  const raw = Math.round((100 * weighted) / total) - 10 * conflicts;
+  return Math.max(0, Math.min(100, raw));
+}
+
+function fmtSize(mb: number): string {
+  return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
+}
+
+// Eased count-up that replays whenever `resetKey` changes.
+function useCountUp(target: number, duration: number, resetKey: unknown): number {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(target * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, duration, resetKey]);
+  return val;
+}
 
 export default function InteractiveDemo() {
-  const [activeStepIndex, setActiveStepIndex] = useState(0);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
-  
-  // Terminal simulation states
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationProgress, setSimulationProgress] = useState(0);
-  const terminalBottomRef = useRef<HTMLDivElement>(null);
+  const [step, setStep] = useState<Step>('scan');
+  const [runId, setRunId] = useState(0);
+  const [openRow, setOpenRow] = useState<string | null>(DEMO_PROJECTS[0].id);
+  const [replaying, setReplaying] = useState(false);
 
-  // Install Lines
-  const installSequence = [
-    '# Initiating global CLI package installation...',
-    'npm install -g devklean',
-    ' ',
-    'fetch metadata: https://registry.npmjs.org/devklean',
-    'resolved dependency tree in 184ms',
-    ' ',
-    'dependencies added:',
-    '  + devklean-cli-core@1.2.0 (compiled native rust binary)',
-    '  + devklean-analyzer@1.0.4',
-    ' ',
-    '✔ devklean globally registered. Type `devklean --help` to start.',
-  ];
+  const totalSize = DEMO_PROJECTS.reduce((s, p) => s + p.sizeMB, 0);
+  const health = computeHealth(DEMO_PROJECTS);
 
-  // Scan Lines
-  const scanSequence = [
-    '# Scanning workspace for build artifacts and virtual environments...',
-    'devklean scan',
-    ' ',
-    '🔍 Traversing directories starting from current working directory...',
-    'Analyzing: ~/projects/web-app/node_modules ...',
-    'Analyzing: ~/projects/rust-service/target ...',
-    'Analyzing: ~/projects/python-model/.venv ...',
-    ' ',
-    '--- SCAN RESULTS SUMMARY ---',
-    '⚡ Completed traversal in 480ms (124,540 directories parsed)',
-    ' ',
-    'ID   PATH                                   TYPE          SIZE     FILES',
-    '1    ~/projects/web/react-portfolio-app     node_modules  480.0 MB  28,410',
-    '2    ~/projects/crypto/rust-blockchain-node target/       8.22 GB  142,050',
-    '3    ~/projects/ai/ml-price-predictor       .venv/        2.10 GB   18,920',
-    '4    ~/projects/saas/nextjs-saas-dashboard  node_modules  350.0 MB  19,450',
-    '5    ~/projects/graphics/raytracer-engine   target/       2.73 GB   38,400',
-    ' ',
-    '⚠ TOTAL POTENTIAL RECLAIMABLE STORAGE: 14.23 GB',
-    '👉 Run `devklean purge` to interactively clean these workspace folders.',
-  ];
+  const scanTotal = useCountUp(step === 'scan' ? totalSize : totalSize, 1000, `${step}-${runId}`);
+  const healthCount = useCountUp(step === 'analyze' ? health : health, 1100, `${step}-${runId}`);
 
-  // Purge sequence requires special timing
-  const runInstallationSimulation = () => {
-    setIsSimulating(true);
-    setTerminalLines([]);
-    setSimulationProgress(0);
-    
-    let currentLine = 0;
-    const interval = setInterval(() => {
-      if (currentLine < installSequence.length) {
-        setTerminalLines(prev => [...prev, installSequence[currentLine]]);
-        currentLine++;
-      } else {
-        clearInterval(interval);
-        setIsSimulating(false);
-      }
-    }, 180);
-  };
-
-  const runScanningSimulation = () => {
-    setIsSimulating(true);
-    setTerminalLines([]);
-    setSimulationProgress(0);
-
-    let currentLine = 0;
-    const interval = setInterval(() => {
-      if (currentLine < scanSequence.length) {
-        setTerminalLines(prev => [...prev, scanSequence[currentLine]]);
-        currentLine++;
-      } else {
-        clearInterval(interval);
-        setIsSimulating(false);
-      }
-    }, 120);
-  };
-
-  const runPurgingSimulation = () => {
-    setIsSimulating(true);
-    setTerminalLines([]);
-    setSimulationProgress(0);
-
-    const lines = [
-      '# Launching interactive artifact purge routine...',
-      'devklean purge',
-      ' ',
-      '⏳ Loading candidate directory registry...',
-      'Found 5 directories matching prune thresholds (14.23 GB total)',
-      ' ',
-      '✔ Selected all 5 directories for removal.',
-      '⚠ WARNING: This action cannot be undone. Reclaiming 14.23 GB.',
-      'Proceed with deletion? [y/N] y',
-      ' ',
-      'Purging artifacts...',
-    ];
-
-    let currentLine = 0;
-    const interval = setInterval(() => {
-      if (currentLine < lines.length) {
-        setTerminalLines(prev => [...prev, lines[currentLine]]);
-        currentLine++;
-      } else {
-        clearInterval(interval);
-        
-        // Start Progress Bar Animation
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-          if (progress <= 100) {
-            setSimulationProgress(progress);
-            progress += 10;
-          } else {
-            clearInterval(progressInterval);
-            
-            // Append final success messages
-            setTerminalLines(prev => [
-              ...prev,
-              ' ',
-              '✔ [1/5] Purged: ~/projects/web/react-portfolio-app/node_modules (480.0 MB)',
-              '✔ [2/5] Purged: ~/projects/crypto/rust-blockchain-node/target (8.22 GB)',
-              '✔ [3/5] Purged: ~/projects/ai/ml-price-predictor/.venv (2.10 GB)',
-              '✔ [4/5] Purged: ~/projects/saas/nextjs-saas-dashboard/node_modules (350.0 MB)',
-              '✔ [5/5] Purged: ~/projects/graphics/raytracer-engine/target (2.73 GB)',
-              ' ',
-              '🔥 PURGE SEQUENCE COMPLETED SUCCESSFULLY',
-              '✨ TOTAL SPACE RECLAIMED: 14.23 Gigabytes',
-              '⏱ Elapsed process duration: 1.48 seconds',
-              '🎉 Your local disk is now 14.23 GB lighter. Keep it klean!'
-            ]);
-            setIsSimulating(false);
-          }
-        }, 100);
-      }
-    }, 150);
-  };
-
-  const handleStepClick = (index: number) => {
-    if (isSimulating) return;
-    setActiveStepIndex(index);
-    if (index === 0) runInstallationSimulation();
-    if (index === 1) runScanningSimulation();
-    if (index === 2) runPurgingSimulation();
-  };
-
-  const triggerActiveSimulation = () => {
-    if (isSimulating) return;
-    if (activeStepIndex === 0) runInstallationSimulation();
-    if (activeStepIndex === 1) runScanningSimulation();
-    if (activeStepIndex === 2) runPurgingSimulation();
-  };
-
+  // Briefly lock the Restart control while the entrance animation plays, with a
+  // real disabled treatment (not opacity-only).
   useEffect(() => {
-    // Initial run
-    runInstallationSimulation();
-  }, []);
+    setReplaying(true);
+    const t = setTimeout(() => setReplaying(false), 1050);
+    return () => clearTimeout(t);
+  }, [step, runId]);
 
-  useEffect(() => {
-    if (terminalBottomRef.current) {
-      terminalBottomRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [terminalLines, simulationProgress]);
+  const activeCmd = STEPS.find((s) => s.id === step)!.command;
 
-  const copyToClipboard = (text: string, index: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedIndex(index);
-    setTimeout(() => setCopiedIndex(null), 2000);
+  const selectStep = (s: Step) => {
+    if (s === step) return;
+    setStep(s);
+    if (s === 'explain') setOpenRow(DEMO_PROJECTS[0].id);
   };
+
+  // Health ring geometry
+  const R = 34;
+  const C = 2 * Math.PI * R;
+  const dashOffset = C * (1 - healthCount / 100);
 
   return (
     <section id="demo-section" className="w-full border-t border-[#27272A] bg-[#09090B]/80 py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        
+
         {/* Title */}
         <div className="mb-16 text-center">
           <div className="inline-flex items-center gap-1.5 rounded-full border border-[#27272A] bg-[#18181B] px-3 py-1 font-mono text-xs font-medium text-[#10B981]">
             <Terminal className="h-3.5 w-3.5" />
-            Interactive Workflow
+            Interactive Demo
           </div>
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-[#FAFAFA] sm:text-4xl font-sans">
-            Three simple commands. Ultimate control.
+            Scan, then analyze, then explain.
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-base text-[#A1A1AA] font-sans">
-            Review DevKlean's simple CLI api. Click on each card below to execute its corresponding command inside our mock browser emulator.
+            The same workspace, seen through three read-only commands. Pick one — nothing here deletes anything.
           </p>
         </div>
 
-        {/* Split Screen Grid */}
         <div className="grid gap-10 lg:grid-cols-12 items-start">
-          
-          {/* Left Side: Step cards */}
+
+          {/* Left: step selectors */}
           <div className="space-y-4 lg:col-span-5">
-            {COMMAND_STEPS.map((step, idx) => {
-              const isActive = activeStepIndex === idx;
+            {STEPS.map((s) => {
+              const isActive = s.id === step;
               return (
-                <div
-                  key={idx}
-                  id={`demo-step-card-${idx}`}
-                  onClick={() => handleStepClick(idx)}
-                  className={`group relative cursor-pointer rounded-xl border p-5 transition-all duration-300 ${
+                <button
+                  key={s.id}
+                  id={`demo-step-card-${s.id}`}
+                  onClick={() => selectStep(s.id)}
+                  className={`group relative w-full rounded-xl border p-5 text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090B] ${
                     isActive
                       ? 'border-[#10B981] bg-[#18181B] shadow-lg shadow-[#10B981]/5'
                       : 'border-[#27272A] bg-[#18181B]/50 hover:border-[#3F3F46] hover:bg-[#18181B]'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className={`font-mono text-xs font-bold uppercase tracking-widest ${isActive ? 'text-[#10B981]' : 'text-[#A1A1AA]'}`}>
-                      {step.badge}
-                    </span>
-                    <button
-                      id={`btn-copy-demo-cmd-${idx}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        copyToClipboard(step.command, idx);
-                      }}
-                      className="rounded border border-[#27272A] bg-black p-1.5 text-[#A1A1AA] hover:text-[#FAFAFA] hover:border-[#3F3F46] transition-colors"
-                      title="Copy command to clipboard"
-                    >
-                      {copiedIndex === idx ? <Check className="h-3.5 w-3.5 text-[#10B981]" /> : <Copy className="h-3.5 w-3.5" />}
-                    </button>
+                  <div className="flex items-center gap-2">
+                    <span className={isActive ? 'text-[#10B981]' : 'text-[#A1A1AA]'}>{s.icon}</span>
+                    <h3 className="font-sans text-lg font-bold text-[#FAFAFA]">{s.label}</h3>
                   </div>
-
-                  <h3 className="mt-3 font-sans text-lg font-bold text-[#FAFAFA]">
-                    {step.name}
-                  </h3>
-                  
                   <div className="mt-2.5 inline-flex items-center gap-1.5 rounded bg-black px-2.5 py-1 font-mono text-xs text-[#10B981] border border-[#27272A]/50">
-                    <span className="text-[#A1A1AA]">$</span> {step.command}
+                    <span className="text-[#A1A1AA]">$</span> {s.command}
                   </div>
-
-                  <p className="mt-3 font-sans text-xs leading-relaxed text-[#A1A1AA]">
-                    {step.description}
-                  </p>
-
-                  {/* Active Indicator Bar */}
-                  {isActive && (
-                    <div className="absolute left-0 top-1/4 h-1/2 w-1 rounded-r-full bg-[#10B981]"></div>
-                  )}
-                </div>
+                  <p className="mt-3 font-sans text-xs leading-relaxed text-[#A1A1AA]">{s.blurb}</p>
+                  {isActive && <div className="absolute left-0 top-1/4 h-1/2 w-1 rounded-r-full bg-[#10B981]"></div>}
+                </button>
               );
             })}
           </div>
 
-          {/* Right Side: Simulated Terminal Block */}
+          {/* Right: terminal panel */}
           <div className="lg:col-span-7">
-            <div className="rounded-xl border border-[#27272A] bg-[#000000] p-4 font-mono text-xs shadow-2xl relative">
-              
-              {/* Terminal Window Top Bar */}
+            <div className="rounded-xl border border-[#27272A] bg-black p-4 font-mono text-xs shadow-2xl">
+              {/* Window chrome */}
               <div className="flex items-center justify-between border-b border-[#27272A] pb-3 mb-4">
                 <div className="flex items-center gap-1.5">
                   <div className="h-3 w-3 rounded-full bg-red-500"></div>
@@ -264,86 +146,208 @@ export default function InteractiveDemo() {
                 </div>
                 <div className="flex items-center gap-1.5 text-[11px] text-[#A1A1AA] font-semibold">
                   <Terminal className="h-3.5 w-3.5 text-[#10B981]" />
-                  devklean - v1.2.0 (bash)
+                  devklean — v1.1.0
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    id="btn-terminal-run-again"
-                    onClick={triggerActiveSimulation}
-                    disabled={isSimulating}
-                    className={`flex items-center gap-1 rounded border border-[#27272A] bg-[#18181B] px-2 py-0.5 text-[10px] text-[#A1A1AA] hover:text-[#FAFAFA] hover:border-[#3F3F46] transition-colors ${
-                      isSimulating ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    title="Restart this step simulation"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    Restart
-                  </button>
-                </div>
+                <button
+                  id="btn-terminal-restart"
+                  onClick={() => setRunId((n) => n + 1)}
+                  disabled={replaying}
+                  className={`flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] ${
+                    replaying
+                      ? 'cursor-not-allowed border-[#1c1c1f] bg-[#111113] text-[#3F3F46]'
+                      : 'border-[#27272A] bg-[#18181B] text-[#A1A1AA] hover:text-[#FAFAFA] hover:border-[#3F3F46]'
+                  }`}
+                  title="Replay this step"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  Restart
+                </button>
               </div>
 
-              {/* Terminal body */}
-              <div className="h-[360px] overflow-y-auto px-1 space-y-1.5 scrollbar-thin select-all">
-                {terminalLines.map((line, i) => {
-                  const safeLine = line || '';
-                  let textClass = 'text-[#A1A1AA]';
-                  if (safeLine.startsWith('#')) {
-                    textClass = 'text-[#A1A1AA]/50 italic';
-                  } else if (safeLine.startsWith('✔') || safeLine.includes('SUCCESSFULLY') || safeLine.startsWith('✨')) {
-                    textClass = 'text-[#10B981]';
-                  } else if (safeLine.startsWith('🔍') || safeLine.startsWith('Analyzing')) {
-                    textClass = 'text-[#A1A1AA]/80';
-                  } else if (safeLine.startsWith('⚠')) {
-                    textClass = 'text-amber-500';
-                  } else if (safeLine.startsWith('npm install') || safeLine.startsWith('devklean')) {
-                    textClass = 'text-[#FAFAFA] font-bold';
-                  } else if (safeLine.startsWith('---')) {
-                    textClass = 'text-[#27272A]';
-                  }
+              {/* Command line */}
+              <div className="mb-3 flex items-center gap-2">
+                <span className="text-[#10B981] font-bold">$</span>
+                <span className="text-[#FAFAFA]">{activeCmd}</span>
+              </div>
 
-                  return (
-                    <div key={i} className={`leading-relaxed whitespace-pre-wrap ${textClass}`}>
-                      {safeLine.startsWith('npm install') || safeLine.startsWith('devklean') ? (
-                        <span className="text-[#10B981] mr-1.5">$</span>
-                      ) : null}
-                      {safeLine}
-                    </div>
-                  );
-                })}
-
-                {/* Simulated Progress Bar for Purging */}
-                {activeStepIndex === 2 && simulationProgress > 0 && (
-                  <div className="space-y-1 mt-2.5">
-                    <div className="flex items-center justify-between text-[#10B981] text-[11px] font-bold">
-                      <span>Purge Progress:</span>
-                      <span>{simulationProgress}%</span>
-                    </div>
-                    <div className="h-3 w-full bg-[#18181B] rounded overflow-hidden border border-[#27272A]">
-                      <div
-                        className="h-full bg-[#10B981] transition-all duration-100 ease-out"
-                        style={{ width: `${simulationProgress}%` }}
-                      ></div>
-                    </div>
+              {/* Body */}
+              <div className="min-h-[360px]">
+                {/* scan header row */}
+                {step !== 'explain' && (
+                  <div className="mb-2 flex items-center justify-between text-[10px] uppercase tracking-wider text-[#A1A1AA]/50">
+                    <span>Directory</span>
+                    <span>{step === 'scan' ? 'Size' : 'Risk · Confidence'}</span>
                   </div>
                 )}
 
-                {/* Flashing terminal cursor at the end when idle */}
-                {!isSimulating && (
-                  <div className="flex items-center gap-1.5 text-[#10B981] mt-2">
-                    <span>$</span>
-                    <span className="h-4 w-1.5 bg-[#10B981] animate-cursor-blink"></span>
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  <motion.div key={`${step}-${runId}`} className="space-y-2">
+                    {DEMO_PROJECTS.map((p, i) => {
+                      const isOpen = step === 'explain' && openRow === p.id;
+                      return (
+                        <motion.div
+                          key={p.id}
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: i * 0.12, duration: 0.35 }}
+                          className={`rounded-lg border ${
+                            isOpen ? 'border-[#10B981]/40 bg-[#10B981]/[0.03]' : 'border-[#27272A] bg-[#0d0d0f]'
+                          }`}
+                        >
+                          {/* Row header */}
+                          <button
+                            onClick={() => step === 'explain' && setOpenRow(isOpen ? null : p.id)}
+                            className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left ${
+                              step === 'explain'
+                                ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] rounded-lg'
+                                : 'cursor-default'
+                            }`}
+                          >
+                            <div className="min-w-0">
+                              <div className="truncate text-[#FAFAFA]">{p.dirName}</div>
+                              <div className="truncate text-[10px] text-[#A1A1AA]/60">{p.path}</div>
+                            </div>
 
-                <div ref={terminalBottomRef}></div>
+                            {/* Right side varies by step */}
+                            {step === 'scan' && <span className="shrink-0 text-amber-500">{fmtSize(p.sizeMB)}</span>}
+
+                            {step === 'analyze' && (
+                              <motion.div
+                                initial={{ scale: 0.6, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.25 + i * 0.12 }}
+                                className="flex shrink-0 items-center gap-2"
+                              >
+                                <span className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold ${RISK_STYLES[p.risk]}`}>
+                                  {p.risk} risk
+                                </span>
+                                <span className="text-[10px] text-[#A1A1AA]">{Math.round(p.confidence * 100)}%</span>
+                              </motion.div>
+                            )}
+
+                            {step === 'explain' && (
+                              <ChevronDown
+                                className={`h-4 w-4 shrink-0 text-[#A1A1AA] transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                              />
+                            )}
+                          </button>
+
+                          {/* Explain detail */}
+                          <AnimatePresence initial={false}>
+                            {isOpen && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.28 }}
+                                className="overflow-hidden"
+                              >
+                                <dl className="space-y-2 border-t border-[#27272A] px-3 py-3 text-[11px]">
+                                  <Field label="ecosystem" value={p.ecosystem} />
+                                  <Field label="generated by" value={p.generatedBy} />
+                                  <Field label="regenerate" value={<code className="text-[#10B981]">{p.regenerateCommand}</code>} />
+                                  <Field
+                                    label="risk · confidence"
+                                    value={
+                                      <span>
+                                        <span className={`rounded border px-1.5 py-0.5 font-semibold ${RISK_STYLES[p.risk]}`}>
+                                          {p.risk}
+                                        </span>{' '}
+                                        · {Math.round(p.confidence * 100)}% confidence
+                                      </span>
+                                    }
+                                  />
+                                  <Field label="staleness" value={`${p.staleDays} days since last activity`} />
+                                  <Field label="rationale" value={<span className="text-[#A1A1AA]">{p.rationale}</span>} />
+                                </dl>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    })}
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Step summary footer inside terminal */}
+                <div className="mt-4 border-t border-[#27272A] pt-3">
+                  {step === 'scan' && (
+                    <div className="text-[#A1A1AA]">
+                      Found <span className="font-bold text-amber-500">{fmtSize(scanTotal)}</span> across{' '}
+                      {DEMO_PROJECTS.length} directories.{' '}
+                      <span className="text-[#A1A1AA]/60">Nothing deleted — this is a read-only scan.</span>
+                    </div>
+                  )}
+
+                  {step === 'analyze' && (
+                    <div className="flex items-center gap-4">
+                      {/* Health gauge */}
+                      <div className="relative h-[84px] w-[84px] shrink-0">
+                        <svg viewBox="0 0 84 84" className="h-full w-full -rotate-90">
+                          <circle cx="42" cy="42" r={R} fill="none" stroke="#27272A" strokeWidth="7" />
+                          <circle
+                            cx="42"
+                            cy="42"
+                            r={R}
+                            fill="none"
+                            stroke="#10B981"
+                            strokeWidth="7"
+                            strokeLinecap="round"
+                            strokeDasharray={C}
+                            strokeDashoffset={dashOffset}
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-lg font-bold text-[#FAFAFA]">{Math.round(healthCount)}</span>
+                          <span className="text-[8px] uppercase tracking-wider text-[#A1A1AA]/60">health</span>
+                        </div>
+                      </div>
+                      <div className="text-[11px] leading-relaxed text-[#A1A1AA]">
+                        <div>
+                          Workspace health <span className="font-bold text-[#FAFAFA]">{health}/100</span>, weighted by each
+                          artifact’s reclaim-safety and size.
+                        </div>
+                        <div className="mt-1 text-[#A1A1AA]/70">
+                          1 lockfile conflict flagged in <code className="text-[#FAFAFA]">portfolio</code> (−10). Every
+                          verdict comes from a fixed registry — never an inference.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 'explain' && (
+                    <div className="text-[#A1A1AA]">
+                      Each field is looked up verbatim from the artifact-signature registry. An unrecognized directory
+                      gets <span className="text-[#FAFAFA]">no fabricated verdict</span> at all.
+                    </div>
+                  )}
+                </div>
               </div>
-
             </div>
+
+            {/* Closing handoff into Safety Net */}
+            <a
+              href="#safety-section"
+              className="group mt-4 flex items-center justify-between gap-3 rounded-lg border border-[#27272A] bg-[#18181B]/60 px-4 py-3 transition-colors hover:border-[#3F3F46] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090B]"
+            >
+              <span className="font-mono text-xs text-[#A1A1AA]">
+                <span className="text-[#10B981]">$ devklean clean</span> moves what you just explained to the OS trash.
+              </span>
+              <ArrowDown className="h-4 w-4 shrink-0 text-[#10B981] transition-transform group-hover:translate-y-0.5" />
+            </a>
           </div>
 
         </div>
-
       </div>
     </section>
+  );
+}
+
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-3">
+      <dt className="w-32 shrink-0 text-[10px] uppercase tracking-wider text-[#A1A1AA]/50">{label}</dt>
+      <dd className="text-[#FAFAFA]">{value}</dd>
+    </div>
   );
 }

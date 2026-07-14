@@ -1,6 +1,0 @@
-{
-  "name": "DevKlean",
-  "description": "A developer-focused landing page for DevKlean, an open-source CLI tool that scans and purges massive build artifacts.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

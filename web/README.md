@@ -1,20 +1,39 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# devklean — landing page
 
-# Run and deploy your AI Studio app
+The marketing site for [devklean](https://github.com/smurftyy/devklean), the
+open-source CLI that finds regenerable development artifacts and moves them to
+your system trash. This folder is a self-contained
+[Vite](https://vite.dev) + React + TypeScript single-page app; it does not
+import from or depend on the Python package next to it.
 
-This contains everything you need to run your app locally.
+Everything shown on the page — commands, flags, risk/confidence values, the
+workspace-health formula — is sourced from the real tool. See the top-level
+[`README.md`](../README.md) and `src/devklean/` for the source of truth.
 
-View your app in AI Studio: https://ai.studio/apps/d712562e-6d15-4c04-aa56-3f42e9fc3999
+## Develop
 
-## Run Locally
+```bash
+npm install
+npm run dev      # serves on http://localhost:3000
+```
 
-**Prerequisites:**  Node.js
+## Build
 
+```bash
+npm run build    # emits a static bundle to dist/
+npm run preview  # serve the built bundle locally
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Other scripts
+
+```bash
+npm run lint     # tsc --noEmit type-check
+npm run clean    # remove the dist/ build output
+```
+
+## Stack
+
+- Vite 6 + React 19
+- Tailwind CSS v4 (`@tailwindcss/vite`)
+- [motion](https://motion.dev) for animation
+- [lucide-react](https://lucide.dev) for icons
