@@ -61,8 +61,9 @@ export default function InteractiveDemo() {
   const totalSize = DEMO_PROJECTS.reduce((s, p) => s + p.sizeMB, 0);
   const health = computeHealth(DEMO_PROJECTS);
 
-  const scanTotal = useCountUp(step === 'scan' ? totalSize : totalSize, 1000, `${step}-${runId}`);
-  const healthCount = useCountUp(step === 'analyze' ? health : health, 1100, `${step}-${runId}`);
+  // Both replay from 0 on any step/run change; each is only shown in its step.
+  const scanTotal = useCountUp(totalSize, 1000, `${step}-${runId}`);
+  const healthCount = useCountUp(health, 1100, `${step}-${runId}`);
 
   // Briefly lock the Restart control while the entrance animation plays, with a
   // real disabled treatment (not opacity-only).

@@ -43,22 +43,22 @@ export default function Footer() {
             </h4>
             <ul className="space-y-2 font-sans text-xs text-[#A1A1AA]">
               <li>
-                <a href="#features-section" className="hover:text-[#FAFAFA] transition-colors">
+                <a href="#features-section" className="rounded-sm transition-colors hover:text-[#FAFAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                   Commands
                 </a>
               </li>
               <li>
-                <a href="#calculator-section" className="hover:text-[#FAFAFA] transition-colors">
+                <a href="#calculator-section" className="rounded-sm transition-colors hover:text-[#FAFAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                   Space Savings Calculator
                 </a>
               </li>
               <li>
-                <a href="#demo-section" className="hover:text-[#FAFAFA] transition-colors">
+                <a href="#demo-section" className="rounded-sm transition-colors hover:text-[#FAFAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                   Interactive Demo
                 </a>
               </li>
               <li>
-                <a href="#safety-section" className="hover:text-[#FAFAFA] transition-colors">
+                <a href="#safety-section" className="rounded-sm transition-colors hover:text-[#FAFAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-black">
                   Safety Net
                 </a>
               </li>

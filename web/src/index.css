@@ -52,3 +52,12 @@ html {
   color: #FAFAFA;
 }
 
+/* Baseline focus-visible ring for any interactive element that doesn't set its
+   own. Elements with an explicit Tailwind `focus-visible:ring-*` treatment use
+   `focus-visible:outline-none` (higher specificity), so this only fills gaps. */
+:focus-visible {
+  outline: 2px solid var(--color-emerald-500, #10B981);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
