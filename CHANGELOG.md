@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Compress-before-trash where the archive reaches trash but the original
+  directory cannot be removed is now a distinct `partial` outcome on
+  `DeleteResult` (not success, not plain failure). The trashed archive is
+  recorded in metadata with `status = "partial"` (schema version 6) so
+  `history` and `doctor` can see it; CLI output warns plainly instead of
+  reporting a generic failure.
+
 ## [1.1.0] - 2026-07-09
 
 ### Added

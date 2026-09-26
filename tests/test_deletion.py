@@ -184,12 +184,14 @@ def test_delete_items_surfaces_error_when_original_removal_fails_after_trash(
         [item], item.size, metadata_manager=manager, compress=True, compress_min_size=0
     )
 
-    # Not a silent success: the item is a reported failure, not a deletion.
+    # Distinct outcome: not success, not plain failure — partial.
     assert result.deleted == ()
-    assert len(result.failed) == 1
-    assert result.failed[0].path == str(source)
+    assert result.failed == ()
+    assert len(result.partial) == 1
+    assert result.partial[0].path == str(source)
+    assert result.partial_count == 1
 
-    error = result.failed[0].error
+    error = result.partial[0].error
     # Distinct from an ordinary failure: says the archive made it to trash...
     assert "compressed archive was trashed" in error
     # ...names the actual reason (proves {exc} was interpolated, not hardcoded)...
@@ -207,8 +209,15 @@ def test_delete_items_surfaces_error_when_original_removal_fails_after_trash(
     assert source.exists()
     assert (source / "a.txt").exists()
 
-    # A failed item is never recorded as a successful deletion.
-    assert manager.load_records().records == ()
+    # A partial item is recorded (status=partial) so history/doctor can see
+    # the trashed archive, unlike a plain failure.
+    records = manager.load_records()
+    assert len(records.records) == 1
+    stored = records.records[0]
+    assert stored.record.item.original_path == str(source)
+    assert stored.record.status == "partial"
+    assert stored.record.archive is not None
+    assert stored.record.archive.format == "gzip"
 
 
 def test_delete_items_does_not_call_send2trash_on_dry_run(tmp_path: Path, fake_trash) -> None:
@@ -356,12 +365,13 @@ def test_delete_items_records_only_successes(tmp_path: Path, monkeypatch) -> Non
     payload = json.loads(records[0].read_text(encoding="utf-8"))
 
     assert result.deleted == ("/tmp/a",)
-    assert payload["schema_version"] == 5
+    assert payload["schema_version"] == 6
     assert payload["deletion"]["strategy"] == "trash"
     assert isinstance(payload["deletion"]["run_id"], str) and payload["deletion"]["run_id"]
     assert payload["item"]["original_path"] == "/tmp/a"
     assert payload["item"]["display_name"] == "A"
     assert payload["item"]["size"] == 10
+    assert payload["status"] == "deleted"
 
 
 def test_metadata_manager_records_archive_details(tmp_path: Path) -> None:
@@ -380,7 +390,7 @@ def test_metadata_manager_records_archive_details(tmp_path: Path) -> None:
     records = sorted(storage_dir.glob("*.json"))
     payload = json.loads(records[0].read_text(encoding="utf-8"))
 
-    assert payload["schema_version"] == 5
+    assert payload["schema_version"] == 6
     assert payload["archive"] == {"path": "/tmp/a.zip", "format": "zip", "compressed": True}
 
 

@@ -16,7 +16,13 @@ from devklean.models import CleanableItem, DeleteResult
 TRASH_STRATEGY = "trash"
 # Bumped for the archive dict gaining compressed/original_size/compressed_size;
 # the new fields are optional on read so schema_version <= 4 records still parse.
-SCHEMA_VERSION = 5
+# Version 6 adds the top-level `status` field ("deleted" vs "partial") so a
+# compress-before-trash run whose archive reached trash but whose original
+# could not be removed stays visible to history/doctor instead of vanishing.
+SCHEMA_VERSION = 6
+
+STATUS_DELETED = "deleted"
+STATUS_PARTIAL = "partial"
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,7 @@ class DeletionMetadataRecord:
     strategy: str
     item: DeletionMetadataItem
     archive: DeletionArchive | None = None
+    status: str = STATUS_DELETED
 
     def to_dict(self) -> dict[str, object]:
         payload = {
@@ -78,6 +85,7 @@ class DeletionMetadataRecord:
                 "strategy": self.strategy,
             },
             "item": self.item.to_dict(),
+            "status": self.status,
         }
         if self.archive is not None:
             payload["archive"] = self.archive.to_dict()
@@ -127,6 +135,11 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
     # version is accepted as-is; there are no migrations yet.
     schema_version = data.get("schema_version", 1)
 
+    # `status` postdates schema_version 5; absence means a legacy "deleted"
+    # record, so absence is not an error. Unknown values are rejected as
+    # corrupt so doctor can flag them rather than silently misreporting.
+    status = data.get("status", STATUS_DELETED)
+
     if not (
         isinstance(deletion_id, str)
         and (run_id is None or isinstance(run_id, str))
@@ -171,6 +184,9 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
     if strategy != TRASH_STRATEGY:
         raise ValueError(f"unrecognized strategy {strategy!r}")
 
+    if not isinstance(status, str) or status not in (STATUS_DELETED, STATUS_PARTIAL):
+        raise ValueError(f"unrecognized status {status!r}")
+
     return DeletionMetadataRecord(
         schema_version=schema_version,
         deletion_id=deletion_id,
@@ -183,6 +199,7 @@ def _parse_record(data: dict[str, object]) -> DeletionMetadataRecord:
             size=size,
         ),
         archive=archive,
+        status=status,
     )
 
 
@@ -240,7 +257,8 @@ class MetadataManager:
         archives: Mapping[str, DeletionArchive] | None = None,
     ) -> None:
         deleted_paths = set(result.deleted)
-        if not deleted_paths:
+        partial_paths = {p.path for p in result.partial}
+        if not deleted_paths and not partial_paths:
             return
 
         self._storage_dir.mkdir(parents=True, exist_ok=True)
@@ -250,7 +268,11 @@ class MetadataManager:
         archives = archives or {}
 
         for item in items:
-            if item.path not in deleted_paths:
+            if item.path in deleted_paths:
+                status = STATUS_DELETED
+            elif item.path in partial_paths:
+                status = STATUS_PARTIAL
+            else:
                 continue
 
             archive = archives.get(item.path)
@@ -267,6 +289,7 @@ class MetadataManager:
                     size=item.size,
                 ),
                 archive=archive,
+                status=status,
             )
             stamp = record.timestamp.replace(":", "").replace("+00:00", "Z")
             filename = f"{stamp}_{record.deletion_id}.json"

@@ -6,7 +6,7 @@ from devklean.deletion.history import HistoryOperation
 from devklean.deletion.integrity import IntegrityReport
 from devklean.formatting import format_size, format_timestamp, truncate
 from devklean.models import CleanableItem, DeleteResult
-from devklean.output.console import SYM_ERROR, SYM_SUCCESS, Console
+from devklean.output.console import SYM_ERROR, SYM_SUCCESS, SYM_WARNING, Console
 from devklean.output.sorting import items_by_size_desc
 from devklean.signatures import ArtifactSignature
 from devklean.signatures.analysis import AnalysisReport
@@ -86,6 +86,8 @@ class TextRenderer:
         self._println()
         for path in result.deleted:
             self._println(f"  {c.paint(SYM_SUCCESS, 'success')} {c.paint(path, 'detail')}")
+        for partial in result.partial:
+            self._println(f"  {c.paint(SYM_WARNING, 'warning')} {partial.path} — {partial.error}")
         for failure in result.failed:
             self._println(f"  {c.paint(SYM_ERROR, 'error')} {failure.path} — {failure.error}")
 
@@ -95,6 +97,10 @@ class TextRenderer:
         self._console.success(
             c.paint(f"Cleaned {deleted} {word}, freed ~{format_size(result.total_size)}.", "bold")
         )
+        if result.partial_count:
+            self._console.warning(
+                f"{result.partial_count} partial: archive in trash, original still on disk."
+            )
         if result.failed_count:
             self._console.error(f"{result.failed_count} failed.")
         self._println()
