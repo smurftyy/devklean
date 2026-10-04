@@ -20,10 +20,28 @@ class DeleteFailure:
 
 
 @dataclass(frozen=True)
+class PartialDeletion:
+    """Archive trashed but original directory could not be removed.
+
+    Distinct from success (original gone) and failure (nothing trashed):
+    the compressed archive genuinely exists in trash, the source is still
+    on disk and must be removed manually.
+    """
+
+    path: str
+    error: str
+    archive_path: str
+    archive_format: str = "gzip"
+    original_size: int | None = None
+    compressed_size: int | None = None
+
+
+@dataclass(frozen=True)
 class DeleteResult:
     deleted: tuple[str, ...]
     failed: tuple[DeleteFailure, ...]
     total_size: int
+    partial: tuple[PartialDeletion, ...] = ()
 
     @property
     def deleted_count(self) -> int:
@@ -32,3 +50,7 @@ class DeleteResult:
     @property
     def failed_count(self) -> int:
         return len(self.failed)
+
+    @property
+    def partial_count(self) -> int:
+        return len(self.partial)

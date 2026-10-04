@@ -15,12 +15,25 @@ from devklean.deletion.compression import (
 from devklean.deletion.metadata import TRASH_STRATEGY, DeletionArchive, MetadataManager
 from devklean.deletion.safety import SafetyValidator
 from devklean.logging_setup import get_logger
-from devklean.models import CleanableItem, DeleteFailure, DeleteResult
+from devklean.models import CleanableItem, DeleteFailure, DeleteResult, PartialDeletion
 
 # The single deletion backend is the native OS trash (Recycle Bin on Windows,
 # ~/.Trash on macOS, the freedesktop trash on Linux) via send2trash. The name
 # recorded in metadata/history is the shared constant defined in metadata.py.
 STRATEGY_NAME = TRASH_STRATEGY
+
+
+class OriginalCleanupError(OSError):
+    """Archive reached trash but the original directory could not be removed.
+
+    Carries the trashed archive so callers can record it instead of losing
+    it in a plain failure. No data is lost: the recoverable copy is in trash,
+    the source is still on disk.
+    """
+
+    def __init__(self, message: str, archive: DeletionArchive) -> None:
+        super().__init__(message)
+        self.archive = archive
 
 
 def delete_items(
@@ -73,6 +86,7 @@ def delete_items(
 
     deleted: list[str] = []
     failures: list[DeleteFailure] = []
+    partials: list[PartialDeletion] = []
     archives: dict[str, DeletionArchive] = {}
     for item in safe:
         try:
@@ -85,6 +99,21 @@ def delete_items(
             if archive is not None:
                 archives[item.path] = archive
             deleted.append(item.path)
+        except OriginalCleanupError as exc:
+            # Archive is already safe in trash; the original is still on disk.
+            # A distinct outcome, not success nor plain failure, so history
+            # and doctor can see the trashed archive.
+            archives[item.path] = exc.archive
+            partials.append(
+                PartialDeletion(
+                    path=item.path,
+                    error=str(exc),
+                    archive_path=exc.archive.path,
+                    archive_format=exc.archive.format,
+                    original_size=exc.archive.original_size,
+                    compressed_size=exc.archive.compressed_size,
+                )
+            )
         except (OSError, CompressionVerificationError) as exc:
             # TrashPermissionError subclasses OSError; ENOENT/EACCES and
             # platform-specific failures surface here too, alongside
@@ -97,17 +126,27 @@ def delete_items(
         deleted=tuple(deleted),
         failed=tuple(failures) + blocked_failures,
         total_size=safe_total,
+        partial=tuple(partials),
     )
 
     for path in result.deleted:
         logger.info("deleted strategy=%s path=%s", STRATEGY_NAME, path)
+    for partial in result.partial:
+        logger.warning(
+            "partial delete strategy=%s path=%s archive=%s error=%s",
+            STRATEGY_NAME,
+            partial.path,
+            partial.archive_path,
+            partial.error,
+        )
     for failure in result.failed:
         logger.warning("delete failed path=%s error=%s", failure.path, failure.error)
     logger.info(
-        "deletion summary strategy=%s deleted=%d failed=%d size=%d compressed=%d",
+        "deletion summary strategy=%s deleted=%d failed=%d partial=%d size=%d compressed=%d",
         STRATEGY_NAME,
         result.deleted_count,
         result.failed_count,
+        result.partial_count,
         result.total_size,
         len(archives),
     )
@@ -167,9 +206,17 @@ def _send_to_trash(
     try:
         shutil.rmtree(source)
     except OSError as exc:
-        raise OSError(
+        archive = DeletionArchive(
+            path=str(result.archive_path),
+            format=result.format,
+            compressed=True,
+            original_size=result.original_size,
+            compressed_size=compressed_size,
+        )
+        raise OriginalCleanupError(
             f"compressed archive was trashed, but the original directory {source} "
-            f"could not be removed ({exc}); remove it manually to reclaim the disk space"
+            f"could not be removed ({exc}); remove it manually to reclaim the disk space",
+            archive,
         ) from exc
 
     return DeletionArchive(
