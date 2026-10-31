@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Python 3.13 is now tested in CI (Linux, macOS, Windows) and declared via
+  the `Programming Language :: Python :: 3.13` classifier. No code changes
+  were needed; the universal `py3-none-any` wheel is unchanged.
+
 ### Fixed
 
 - Compress-before-trash where the archive reaches trash but the original
