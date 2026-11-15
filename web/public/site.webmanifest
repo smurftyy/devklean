@@ -1,0 +1,22 @@
+{
+  "name": "DevKlean",
+  "short_name": "DevKlean",
+  "description": "Find and inspect regenerable dependencies, caches, and build artifacts across development stacks. Move selected files to system trash with DevKlean.",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#111111",
+  "background_color": "#111111",
+  "scope": "/",
+  "start_url": "/",
+  "display": "browser"
+}

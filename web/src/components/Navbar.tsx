@@ -1,56 +1,114 @@
-import React from 'react';
-import { Github, Terminal } from 'lucide-react';
-
-const REPO_URL = 'https://github.com/smurftyy/devklean';
-const X_URL = 'https://x.com/Xanes_007';
+import React, { useState } from 'react';
+import { Github, Menu, X } from 'lucide-react';
+import { DOCS_URL, REPO_URL } from '../data';
+import DevKleanBrand from './DevKleanBrand';
 
 export default function Navbar() {
-  return (
-    <nav id="app-navbar" className="sticky top-0 z-50 w-full border-b border-[#27272A] bg-[#09090B]/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#27272A] bg-[#18181B] text-[#10B981]">
-            <Terminal className="h-5 w-5" />
-          </div>
-          <span className="font-mono text-lg font-bold tracking-tight text-[#FAFAFA]">
-            Dev<span className="text-[#10B981]">K</span>lean
-          </span>
-          <span className="hidden rounded-full border border-[#10B981]/20 bg-[#10B981]/10 px-2 py-0.5 font-mono text-[10px] font-medium text-[#10B981] sm:inline-block">
-            v1.1.0
-          </span>
-        </div>
+  const [mobileOpen, setMobileOpen] = useState(false);
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-3">
-          {/* GitHub repository link */}
+  return (
+    <header className="sticky top-0 z-40 w-full border-b border-[#333333] bg-[#111111]">
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-5 md:px-6 lg:px-8">
+        {/* Left: pixel-dissolving folder brand lockup */}
+        <a
+          href="#top"
+          aria-label="DevKlean home"
+          className="inline-flex min-h-[44px] items-center text-[#F5F5F5] transition-opacity hover:opacity-85"
+        >
+          <DevKleanBrand variant="lockup" size="nav" />
+        </a>
+
+        {/* Desktop navigation */}
+        <nav aria-label="Primary" className="hidden items-center gap-7 md:flex">
           <a
-            id="link-navbar-github"
+            href="#walkthrough"
+            className="inline-flex min-h-[44px] items-center font-sans text-[14px] text-[#ADADAD] transition-colors hover:text-[#F5F5F5]"
+          >
+            How it works
+          </a>
+          <a
+            href="#safety"
+            className="inline-flex min-h-[44px] items-center font-sans text-[14px] text-[#ADADAD] transition-colors hover:text-[#F5F5F5]"
+          >
+            Safety
+          </a>
+          <a
+            href={DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-[44px] items-center font-sans text-[14px] text-[#ADADAD] transition-colors hover:text-[#F5F5F5]"
+          >
+            Docs
+          </a>
+        </nav>
+
+        {/* Right: restrained GitHub action + mobile menu button */}
+        <div className="flex items-center gap-1">
+          <a
             href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-md border border-[#27272A] bg-[#18181B] px-3 py-1.5 font-mono text-xs font-medium text-[#FAFAFA] transition-colors hover:bg-[#27272A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090B]"
+            className="inline-flex min-h-[44px] items-center gap-1.5 rounded-[6px] px-2.5 font-sans text-[14px] text-[#F5F5F5] transition-colors hover:bg-[#242424]"
           >
-            <Github className="h-4 w-4" />
-            <span className="hidden sm:inline">View on GitHub</span>
+            <Github className="h-4 w-4 shrink-0" strokeWidth={1.6} aria-hidden="true" />
+            <span className="hidden sm:inline">View on GitHub</span><span className="sm:hidden">GitHub</span>
+            <span className="ml-1 text-[#ADADAD]" aria-hidden="true">
+              ↗
+            </span>
           </a>
 
-          {/* X (Twitter) link */}
-          <a
-            id="link-navbar-x"
-            href={X_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-[#27272A] bg-[#18181B] text-[#A1A1AA] transition-colors hover:bg-[#27272A] hover:text-[#FAFAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#10B981] focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090B]"
-            title="Follow the maintainer on X"
+          <button
+            type="button"
+            onClick={() => setMobileOpen((prev) => !prev)}
+            aria-expanded={mobileOpen}
+            aria-label={mobileOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[6px] text-[#F5F5F5] transition-colors hover:bg-[#242424] md:hidden"
           >
-            {/* X logo (no dedicated lucide glyph) */}
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" aria-hidden="true">
-              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-            </svg>
-          </a>
+            {mobileOpen ? (
+              <X className="h-[18px] w-[18px]" strokeWidth={1.6} aria-hidden="true" />
+            ) : (
+              <Menu className="h-[18px] w-[18px]" strokeWidth={1.6} aria-hidden="true" />
+            )}
+          </button>
         </div>
       </div>
-    </nav>
+
+      {/* Mobile navigation drawer */}
+      {mobileOpen && (
+        <nav
+          aria-label="Mobile"
+          className="border-t border-[#333333] bg-[#111111] px-5 py-2 md:hidden"
+        >
+          <div className="flex flex-col divide-y divide-[#333333]">
+            <a
+              href="#walkthrough"
+              onClick={() => setMobileOpen(false)}
+              className="flex min-h-[44px] items-center font-sans text-[14px] text-[#F5F5F5]"
+            >
+              How it works
+            </a>
+            <a
+              href="#safety"
+              onClick={() => setMobileOpen(false)}
+              className="flex min-h-[44px] items-center font-sans text-[14px] text-[#F5F5F5]"
+            >
+              Safety
+            </a>
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setMobileOpen(false)}
+              className="flex min-h-[44px] items-center justify-between font-sans text-[14px] text-[#F5F5F5]"
+            >
+              <span>Docs</span>
+              <span className="text-[#ADADAD]" aria-hidden="true">
+                ↗
+              </span>
+            </a>
+          </div>
+        </nav>
+      )}
+    </header>
   );
 }
