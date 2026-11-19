@@ -1,63 +1,67 @@
-/* Fonts are preconnected + loaded via <link> in index.html to avoid a render-blocking @import round trip. */
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, monospace;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 
-  /* Custom animations and theme colors if needed for v4 */
-  --animate-cursor-blink: cursor-blink 1s step-end infinite;
-  --animate-pulse-slow: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-glow-pulse: glow-pulse 4s ease-in-out infinite;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: #111111;
+    color: #F5F5F5;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 
-  @keyframes cursor-blink {
-    from, to { border-color: transparent }
-    50% { border-color: var(--color-emerald-500) }
+  body {
+    background-color: #111111;
+    color: #F5F5F5;
+    margin: 0;
+    overflow-x: hidden;
   }
-  @keyframes pulse-slow {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
+
+  ::selection {
+    background-color: #F5F5F5;
+    color: #111111;
   }
-  @keyframes glow-pulse {
-    0%, 100% { filter: drop-shadow(0 0 20px rgba(16, 185, 129, 0.1)); }
-    50% { filter: drop-shadow(0 0 40px rgba(16, 185, 129, 0.25)); }
+
+  :focus-visible {
+    outline: 2px solid #F5F5F5;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Remove native spin buttons on numeric calculator inputs for clean editorial styling */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
   }
 }
 
-/* Custom global overrides for developer polish */
-html {
-  scroll-behavior: smooth;
-  background-color: #09090B;
-  color: #FAFAFA;
-}
-
-/* Custom scrollbar for technical weightless feel */
+/* Monochrome scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #09090B;
+  background: #111111;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272A;
+  background: #333333;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3F3F46;
+  background: #ADADAD;
 }
 
-::selection {
-  background-color: rgba(16, 185, 129, 0.2);
-  color: #FAFAFA;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
-
-/* Baseline focus-visible ring for any interactive element that doesn't set its
-   own. Elements with an explicit Tailwind `focus-visible:ring-*` treatment use
-   `focus-visible:outline-none` (higher specificity), so this only fills gaps. */
-:focus-visible {
-  outline: 2px solid var(--color-emerald-500, #10B981);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
