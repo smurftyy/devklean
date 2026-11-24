@@ -1,6 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="115" fill="#0a0a0a"/>
-  <circle cx="245" cy="300" r="135" fill="#16b88a"/>
-  <circle cx="245" cy="300" r="90" fill="#0a0a0a"/>
-  <rect x="305" y="110" width="48" height="310" rx="24" fill="#16b88a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="7" fill="#111111"/>
+  <!-- Secondary folder layer (back tab + rear flap + trailing pixels) -->
+  <path d="M10 8H15L17 10H25C25.8284 10 26.5 10.6716 26.5 11.5V13.5H10V8Z" fill="#ADADAD"/>
+  <rect x="6" y="8" width="2" height="2" fill="#ADADAD"/>
+  <rect x="4" y="13.5" width="2" height="2" fill="#ADADAD"/>
+  <rect x="4.5" y="19.5" width="2" height="2" fill="#ADADAD"/>
+  <!-- Main folder body (#F5F5F5) with pixel-dissolving left edge -->
+  <path d="M11.5 12H25C25.8284 12 26.5 12.6716 26.5 13.5V22.5C26.5 23.3284 25.8284 24 25 24H11.5V12Z" fill="#F5F5F5"/>
+  <rect x="9.5" y="12" width="2" height="2.5" fill="#F5F5F5"/>
+  <rect x="9.5" y="16.5" width="2" height="3" fill="#F5F5F5"/>
+  <rect x="9.5" y="21.5" width="2" height="2.5" fill="#F5F5F5"/>
+  <rect x="7" y="11.5" width="2" height="2" fill="#F5F5F5"/>
+  <rect x="7" y="16" width="2" height="2" fill="#F5F5F5"/>
+  <rect x="7" y="22" width="2" height="2" fill="#F5F5F5"/>
 </svg>

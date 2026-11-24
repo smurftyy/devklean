@@ -31,6 +31,12 @@ npm run lint     # tsc --noEmit type-check
 npm run clean    # remove the dist/ build output
 ```
 
+## Environment & Custom Domain
+
+Copy [`.env.example`](.env.example) to `.env.local` if you need to override the site origin locally. `VITE_SITE_ORIGIN` in [`site.config.ts`](site.config.ts) controls canonical URLs, Open Graph/Twitter metadata, JSON-LD, `robots.txt`, and `sitemap.xml`.
+
+See [`DOMAIN_MIGRATION.md`](DOMAIN_MIGRATION.md) for the staged cutover checklist to `https://devklean.smurftyy.dev`.
+
 ## Stack
 
 - Vite 6 + React 19

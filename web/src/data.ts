@@ -1,115 +1,107 @@
-import { DemoProject, Feature, Ecosystem, StoryBeat } from './types';
+import { EcosystemItem, FaqItem, WorkspaceArtifact } from './types';
 
-// The four ecosystems devklean's scanner actually recognizes, sourced from
-// devklean.config.defaults.DEFAULT_TARGETS / the signature registry.
-export const ECOSYSTEMS: Ecosystem[] = [
-  { name: 'Node.js', artifacts: 'node_modules', accent: 'text-emerald-400' },
-  { name: 'Python', artifacts: 'venv · .venv · env · __pycache__', accent: 'text-sky-400' },
-  { name: 'Next.js', artifacts: '.next', accent: 'text-zinc-100' },
-  { name: 'Generic caches', artifacts: 'dist · .cache', accent: 'text-amber-400' },
+export const REPO_URL = 'https://github.com/smurftyy/devklean';
+export const DOCS_URL = 'https://github.com/smurftyy/devklean#readme';
+export const ISSUES_URL = 'https://github.com/smurftyy/devklean/issues';
+export const LICENSE_URL = 'https://github.com/smurftyy/devklean/blob/main/LICENSE';
+export const INSTALL_COMMAND = 'pipx install devklean';
+
+export function formatSize(mb: number): string {
+  return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(1)} MB`;
+}
+
+export const ECOSYSTEM_ITEMS: EcosystemItem[] = [
+  { id: 'nodejs', name: 'Node.js', artifacts: 'node_modules' },
+  { id: 'python', name: 'Python', artifacts: '.venv · venv · __pycache__' },
+  { id: 'nextjs', name: 'Next.js', artifacts: '.next' },
+  { id: 'caches', name: 'Build caches', artifacts: 'dist · .cache' },
 ];
 
-// Phase 3 — the three read-only commands that make up devklean's differentiated
-// layer. `clean` is the only command that deletes; these three never do.
-export const FEATURES: Feature[] = [
+// Illustrative workspace matching the four core directory types in the hero
+// and walkthrough. Signature metadata mirrors src/devklean/signatures/registry.py.
+export const WORKSPACE_ARTIFACTS: WorkspaceArtifact[] = [
   {
-    id: 'scan',
-    command: 'devklean scan',
-    title: 'Scan',
-    description:
-      'Walks your workspace, finds cleanable directories, and reports each one’s size. It never deletes — it only shows you what is there.',
-    sampleOutput: 'node_modules   612.0 MB',
-  },
-  {
-    id: 'analyze',
-    command: 'devklean analyze',
-    title: 'Analyze',
-    description:
-      'Cross-references every match against the artifact-signature registry — risk tier, confidence, staleness — and reports a 0–100 workspace-health score. Unrecognized directories get no fabricated verdict.',
-    sampleOutput: 'workspace health   82/100',
-  },
-  {
-    id: 'explain',
-    command: 'devklean explain PATH',
-    title: 'Explain',
-    description:
-      'Looks up a single directory: what generates it, how to regenerate it, its risk tier and confidence, and the reasoning behind the call — straight from the registry entry.',
-    sampleOutput: '.next → Next.js · low risk',
-  },
-];
-
-// Phase 4 — the demo workspace. Every field below is copied verbatim from
-// src/devklean/signatures/registry.py so the analyze/explain steps show real
-// registry data, not invented verdicts.
-export const DEMO_PROJECTS: DemoProject[] = [
-  {
-    id: 'node',
+    id: 'node_modules',
     dirName: 'node_modules',
-    path: '~/projects/web/portfolio',
-    sizeMB: 1240,
+    path: '~/projects/web-app/node_modules',
+    sizeMB: 1270,
     ecosystem: 'Node.js (npm/yarn/pnpm)',
     risk: 'low',
     confidence: 0.98,
     generatedBy: 'npm install / yarn install / pnpm install, from package.json and a lockfile',
-    regenerateCommand: 'npm install',
+    regenerateCommand: 'npm install (or yarn install / pnpm install, matching your lockfile)',
     rationale:
       "Directory name is npm/Node's own convention; contents are fully reproducible from package.json plus a lockfile.",
     staleDays: 34,
     lockfileConflict: true,
   },
   {
-    id: 'env',
-    dirName: 'env',
-    path: '~/projects/api/ingest-service',
-    sizeMB: 360,
-    ecosystem: 'Python (venv, legacy naming)',
-    risk: 'medium',
-    confidence: 0.75,
+    id: 'venv',
+    dirName: '.venv',
+    path: '~/projects/ml-api/.venv',
+    sizeMB: 418,
+    ecosystem: 'Python (venv)',
+    risk: 'low',
+    confidence: 0.95,
     generatedBy: 'python -m venv, populated via pip from a requirements/lock file',
-    regenerateCommand: 'python -m venv env && env/bin/pip install -r requirements.txt',
+    regenerateCommand: 'python -m venv .venv && .venv/bin/pip install -r requirements.txt',
     rationale:
-      "'env' is a less specific convention than venv/.venv and is sometimes used for unrelated environment-variable directories, so the match is less certain.",
-    staleDays: 96,
+      'Standard virtualenv layout (pyvenv.cfg, bin/lib); reproducible from a requirements file, though the exact install set depends on which file was originally used.',
+    staleDays: 62,
   },
   {
     id: 'next',
     dirName: '.next',
-    path: '~/projects/web/marketing-site',
-    sizeMB: 200,
+    path: '~/projects/docs-site/.next',
+    sizeMB: 212,
     ecosystem: 'Next.js',
     risk: 'low',
     confidence: 0.95,
-    generatedBy: 'next build / next dev, from the project’s Next.js source',
-    regenerateCommand: 'next build',
+    generatedBy: "next build / next dev, from the project's Next.js source",
+    regenerateCommand: 'next build (or next dev, which regenerates dev artifacts on the fly)',
     rationale:
       "Directory name is Next.js's own build-output convention; reproducible from source via the Next.js CLI.",
     staleDays: 12,
   },
+  {
+    id: 'dist',
+    dirName: 'dist',
+    path: '~/projects/cli-core/dist',
+    sizeMB: 48.4,
+    ecosystem: 'Generic build tooling (bundler/compiler output)',
+    risk: 'medium',
+    confidence: 0.7,
+    generatedBy: 'whatever build step the project defines (webpack, tsc, vite, build.sh, ...)',
+    regenerateCommand: 'run the project’s documented build command (e.g. npm run build)',
+    rationale:
+      "'dist' is a widely shared convention across many toolchains rather than one tool's signature — usually build output, but devklean cannot prove which build command produced it.",
+    staleDays: 19,
+  },
 ];
 
-// Phase 6 — the four factual beats of the project's evolution. Beat 1 is the
-// maintainer's own words; beats 2–4 are drawn straight from CHANGELOG.md with
-// no invented motivation.
-export const STORY_BEATS: StoryBeat[] = [
+export const FAQ_ITEMS: FaqItem[] = [
   {
-    marker: 'devclean.py',
-    title: 'The script',
-    body:
-      '“It started as a simple script — I just wanted to get rid of dev junk without doing it by hand. A cool little Python script, basically. It grew from there into an actual utility.”',
+    id: 'safe',
+    question: 'Is it safe for active projects?',
+    answer:
+      'scan, analyze, and explain are read-only and never modify or delete files. Standard clean confirms the entire discovered batch under your chosen project path, respecting exclusions. It sends those directories to your operating system trash rather than running rm -rf, refuses protected system paths and symlinks by default, and, with default settings, requires typing DELETE for batches at or above 1 GiB. Active projects may need dependencies reinstalled or build files regenerated after cleanup.',
   },
   {
-    marker: 'v1.0.0',
-    title: 'First PyPI release',
-    body: 'Packaged and published to PyPI: scan and clean, with every deletion routed to the system trash.',
+    id: 'exclude',
+    question: 'Can I exclude folders?',
+    answer:
+      'Yes. Add a project-level .devklean.toml (discovered by walking up from your current directory) or a global ~/.config/devklean/config.toml. You can exclude directory names via exclude = [...] or list specific paths and folder names under [ignore].',
   },
   {
-    marker: 'v1.0.2',
-    title: 'Terminal hardening',
-    body: 'Adopted click.echo across the console layer, fixing Unicode and Windows terminal handling.',
+    id: 'install',
+    question: 'How do I install it?',
+    answer:
+      'DevKlean is pure Python (3.8+) published on PyPI. With pipx already installed, run pipx install devklean for an isolated CLI install, or pip install devklean into an activated Python virtual environment. Then run devklean scan inside a project folder for a read-only first look. Add the optional zstd extra via pip install "devklean[zstd]" if you want Zstandard compressed cleanup.',
   },
   {
-    marker: 'v1.1.0',
-    title: 'A layer that reasons',
-    body: 'Added analyze and explain, backed by the artifact-signature registry, plus --compress for archiving large artifacts before trashing them.',
+    id: 'windows',
+    question: 'Does it work on Windows?',
+    answer:
+      'Yes. All core commands — scan, clean, analyze, explain, history, doctor, and restore — run on Windows, macOS, and Linux, using the Recycle Bin on Windows. The only exception is interactive TUI selection (devklean clean -i), which is Linux and macOS only because it uses Python’s curses module.',
   },
 ];
