@@ -15,5 +15,18 @@
         }
       ]
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "devklean.vercel.app"
+        }
+      ],
+      "destination": "https://devklean.smurftyy.dev/:path*",
+      "permanent": true
+    }
   ]
 }

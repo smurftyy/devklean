@@ -1,15 +1,13 @@
 /**
  * Centralized public site origin and verified metadata configuration.
  *
- * Pre-cutover live host: https://devklean.vercel.app
- * Planned production host: https://devklean.smurftyy.dev
+ * Production host: https://devklean.smurftyy.dev
  *
- * To switch production metadata to the custom domain at cutover, set
- * VITE_SITE_ORIGIN=https://devklean.smurftyy.dev in your production environment
- * (or update DEFAULT_SITE_ORIGIN below once devklean.smurftyy.dev is live).
+ * The previous host, https://devklean.vercel.app, now permanently redirects
+ * here (see vercel.json). Override via VITE_SITE_ORIGIN in the environment
+ * if a different origin is ever needed (e.g. a preview deployment).
  */
-export const DEFAULT_SITE_ORIGIN = 'https://devklean.vercel.app';
-export const PLANNED_SITE_ORIGIN = 'https://devklean.smurftyy.dev';
+export const DEFAULT_SITE_ORIGIN = 'https://devklean.smurftyy.dev';
 
 export const SITE_META = {
   name: 'DevKlean',
