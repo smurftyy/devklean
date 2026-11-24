@@ -5,7 +5,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/devklean.svg)](https://pypi.org/project/devklean/)
 [![Python versions](https://img.shields.io/pypi/pyversions/devklean.svg)](https://pypi.org/project/devklean/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/smurftyy/devklean/blob/main/LICENSE)
-[![Website](https://img.shields.io/website?url=https%3A%2F%2Fdevklean.vercel.app&up_message=online&up_color=green&down_message=offline&down_color=red&label=Landing%20Page)](https://devklean.vercel.app)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fdevklean.smurftyy.dev&up_message=online&up_color=green&down_message=offline&down_color=red&label=Landing%20Page)](https://devklean.smurftyy.dev)
 
 **Reclaim disk space by safely cleaning up development artifacts** — `node_modules`, `.venv`, build caches, and other regenerable directories — with a trash-backed safety net so nothing is ever lost to a typo.
 
